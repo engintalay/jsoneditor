@@ -14,6 +14,7 @@ interface State {
   rightPanel: 'tree' | 'schema' | null;
 
   newTab: () => void;
+  openFileTab: (path: string, name: string, content: string) => void;
   closeTab: (id: string) => void;
   setActive: (id: string) => void;
   updateContent: (id: string, content: string) => void;
@@ -42,6 +43,15 @@ export const useStore = create<State>((set, get) => ({
       dirty: false,
       language: 'json',
     };
+    set((s) => ({ tabs: [...s.tabs, tab], activeId: tab.id }));
+  },
+  openFileTab: (path, name, content) => {
+    const existing = get().tabs.find((t) => t.path === path);
+    if (existing) {
+      set({ activeId: existing.id });
+      return;
+    }
+    const tab: Tab = { id: nid(), name, path, content, dirty: false, language: 'json' };
     set((s) => ({ tabs: [...s.tabs, tab], activeId: tab.id }));
   },
   closeTab: (id) =>
