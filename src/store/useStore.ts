@@ -13,6 +13,7 @@ interface State {
   schemaErrors: JsonError[];
   rightPanel: 'tree' | 'schema' | null;
   jump: { line: number; column: number; nonce: number } | null;
+  schemaText: string;
 
   newTab: () => void;
   openFileTab: (path: string, name: string, content: string) => void;
@@ -25,6 +26,7 @@ interface State {
   setSchemaErrors: (errors: JsonError[]) => void;
   setRightPanel: (p: State['rightPanel']) => void;
   jumpTo: (line: number, column: number) => void;
+  setSchemaText: (t: string) => void;
   activeTab: () => Tab | undefined;
 }
 
@@ -37,6 +39,7 @@ export const useStore = create<State>((set, get) => ({
   schemaErrors: [],
   rightPanel: 'tree',
   jump: null,
+  schemaText: '',
 
   newTab: () => {
     const tab: Tab = {
@@ -85,6 +88,7 @@ export const useStore = create<State>((set, get) => ({
   setSchemaErrors: (errors) => set({ schemaErrors: errors }),
   setRightPanel: (p) => set({ rightPanel: p }),
   jumpTo: (line, column) => set({ jump: { line, column, nonce: Date.now() } }),
+  setSchemaText: (t) => set({ schemaText: t }),
   activeTab: () => {
     const { tabs, activeId } = get();
     return tabs.find((t) => t.id === activeId);

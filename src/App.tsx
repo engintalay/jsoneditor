@@ -1,6 +1,8 @@
 import { useEffect } from 'react';
 import EditorPane from './components/EditorPane';
 import ErrorPanel from './components/ErrorPanel';
+import SchemaPanel from './components/SchemaPanel';
+import TreePanel from './components/TreePanel';
 import MenuBar from './components/MenuBar';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
@@ -9,6 +11,7 @@ import { writeFile } from './lib/fs';
 import { useStore } from './store/useStore';
 
 export default function App() {
+  const rightPanel = useStore((s) => s.rightPanel);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -43,6 +46,8 @@ export default function App() {
           <EditorPane />
           <ErrorPanel />
         </div>
+        {rightPanel === 'tree' && <TreePanel />}
+        {rightPanel === 'schema' && <SchemaPanel />}
       </div>
       <StatusBar />
     </div>
