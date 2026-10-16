@@ -13,14 +13,18 @@ JSON Schema doğrulama.
 sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev
 ```
 
-## Geliştirme
+## Çalıştırma (iki durum)
 
-```bash
-npm install
-npm run tauri dev
-# ya da sadece web önizleme:
-npm run dev
-```
+| Durum | Komut | Açıklama |
+|---|---|---|
+| Web önizleme | `./run-web.sh` | Tarayıcıda açılır (`http://localhost:1420/`). Dosya aç/kaydet fallback ile çalışır, klasör açma yok. |
+| Masaüstü uygulaması | `./run-desktop.sh` | Gerçek Tauri penceresi: klasör/workspace açma dahil tam dosya erişimi. |
+
+npm karşılıkları: `npm run dev:web`, `npm run dev:tauri`,
+`npm run build:web`, `npm run build:desktop`.
+
+`run-desktop.sh` eksik önkoşulları (Rust, webkit dev paketleri) kontrol eder
+ve ne kurman gerektiğini söyler.
 
 Tarayıcıda açıldığında dosya işlemleri fallback ile çalışır
 (dosya seç + indirerek kaydet); klasör/workspace açma yalnızca
