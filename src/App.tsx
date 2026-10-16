@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import EditorPane from './components/EditorPane';
+import ErrorPanel from './components/ErrorPanel';
 import MenuBar from './components/MenuBar';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
@@ -40,6 +41,7 @@ export default function App() {
         <div className="center">
           <TabBar />
           <EditorPane />
+          <ErrorPanel />
         </div>
       </div>
       <StatusBar />

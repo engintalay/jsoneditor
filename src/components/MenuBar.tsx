@@ -1,8 +1,56 @@
+import { formatJson, minifyJson, parseErrors, sortKeys } from '../lib/jsonUtils';
 import { pickAndReadFile, pickFolder, writeFile } from '../lib/fs';
 import { useStore } from '../store/useStore';
 
 export default function MenuBar() {
   const store = useStore();
+  const tab = store.activeTab();
+
+  const needValid = (): string | null => {
+    if (!tab) return null;
+    const errs = parseErrors(tab.content);
+    if (errs.length > 0) {
+      store.setErrors(errs);
+      const first = errs[0];
+      store.jumpTo(first.line, first.column);
+      alert(
+        `JSON hatalı — formatlanamadı.\nSatır ${first.line}, Sütun ${first.column}: ${first.message}`,
+      );
+      return null;
+    }
+    return tab.content;
+  };
+
+  const onFormat = () => {
+    const src = needValid();
+    if (src && tab) {
+      try {
+        store.updateContent(tab.id, formatJson(src));
+      } catch (e) {
+        alert(`Formatlama hatası: ${(e as Error).message}`);
+      }
+    }
+  };
+  const onMinify = () => {
+    const src = needValid();
+    if (src && tab) {
+      try {
+        store.updateContent(tab.id, minifyJson(src));
+      } catch (e) {
+        alert(`Minify hatası: ${(e as Error).message}`);
+      }
+    }
+  };
+  const onSort = () => {
+    const src = needValid();
+    if (src && tab) {
+      try {
+        store.updateContent(tab.id, sortKeys(src));
+      } catch (e) {
+        alert(`Sıralama hatası: ${(e as Error).message}`);
+      }
+    }
+  };
 
   const onOpenFile = async () => {
     const f = await pickAndReadFile();
@@ -18,10 +66,10 @@ export default function MenuBar() {
   };
 
   const onSave = async () => {
-    const tab = store.activeTab();
-    if (!tab) return;
-    const res = await writeFile(tab.path, tab.name, tab.content);
-    if (res) store.markSaved(tab.id, res.path, res.name);
+    const t = store.activeTab();
+    if (!t) return;
+    const res = await writeFile(t.path, t.name, t.content);
+    if (res) store.markSaved(t.id, res.path, res.name);
   };
 
   return (
@@ -31,9 +79,9 @@ export default function MenuBar() {
       <button onClick={onOpenFolder}>Klasör Aç</button>
       <button onClick={onSave}>Kaydet</button>
       <div className="actions">
-        <button data-act="format">Formatla</button>
-        <button data-act="minify">Minify</button>
-        <button data-act="sort">Key Sırala</button>
+        <button onClick={onFormat} disabled={!tab}>Formatla</button>
+        <button onClick={onMinify} disabled={!tab}>Minify</button>
+        <button onClick={onSort} disabled={!tab}>Key Sırala</button>
       </div>
       <div className="actions">
         <button
