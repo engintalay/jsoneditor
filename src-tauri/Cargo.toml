@@ -25,3 +25,10 @@ tauri = { version = "2.12.4", features = [] }
 tauri-plugin-log = "2"
 tauri-plugin-fs = "2"
 tauri-plugin-dialog = "2"
+
+# PROXY NOTU: kurumsal proxy "crypto" iceren crates.io URL'lerini engelliyor.
+# crypto-common registry'den cozule-medigi icin kaynagi vendor/ altinda
+# sabitlendi (versiyon gereksinimi ^0.1.2'yi karsiliyor). vendor/ git'e
+# dahil degildir; kurulum icin README "Proxy notu"na bakin.
+[patch.crates-io]
+crypto-common = { path = "../vendor/crypto-common" }

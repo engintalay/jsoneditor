@@ -34,6 +34,31 @@ if [ "$missing" -eq 1 ]; then
   exit 1
 fi
 
+# Sistem .pc dizinleri her zaman yolda olmali (ozellikle brew pkg-config
+# kullaniliyorsa varsayilan arama yolu sistem dizinlerini icermez).
+export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
+
+# Hala eksik kalan basliklar varsa (sudosuz makine), .deb'leri kullanici
+# alanina acip pkg-config'i oraya da yonlendirir (idempotent).
+SYSROOT="$HOME/.cache/jsoneditor-sysroot"
+PC_DIR="$SYSROOT/usr/lib/x86_64-linux-gnu/pkgconfig"
+need_sysroot=0
+for pc in dbus-1 cairo pango atk gdk-pixbuf-2.0 libsoup-3.0 webkit2gtk-4.1 javascriptcoregtk-4.1; do
+  PKG_CONFIG_PATH="$PKG_CONFIG_PATH" pkg-config --exists "$pc" 2>/dev/null || need_sysroot=1
+done
+if [ "$need_sysroot" -eq 1 ]; then
+  echo "Eksik sistem basliklari kullanici alanina kuruluyor (sudo gerekmez)..."
+  mkdir -p "$SYSROOT"
+  TMPD="$(mktemp -d)"
+  (cd "$TMPD" && apt-get download libdbus-1-dev libcairo2-dev libpango1.0-dev libatk1.0-dev libgdk-pixbuf-2.0-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev >/dev/null 2>&1)
+  for f in "$TMPD"/*.deb; do dpkg-deb -x "$f" "$SYSROOT"; done
+  rm -rf "$TMPD"
+  grep -rl "^prefix=/usr" "$PC_DIR" | while read -r pc; do
+    sed -i "s|^prefix=/usr|prefix=$SYSROOT/usr|" "$pc"
+  done
+  export PKG_CONFIG_PATH="$PC_DIR:$PKG_CONFIG_PATH"
+fi
+
 if [ ! -d node_modules ]; then
   echo "node_modules yok, bagimliliklar kuruluyor..."
   npm install
