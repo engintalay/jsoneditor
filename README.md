@@ -1,32 +1,40 @@
-# React + TypeScript + Vite
+# JSON Editor (Tauri + React + Monaco)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Masaüstü hissiyatlı JSON editörü: dosya/klasör (workspace) açma, kaydetme,
+formatla/minify/key-sırala, hatanın satır/sütununu gösterme, ağaç görünümü ve
+JSON Schema doğrulama.
 
-Currently, two official plugins are available:
+## Gereksinimler
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node 20+, Rust 1.90+
+- Linux'ta Tauri sistem bağımlılıkları:
 
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## Geliştirme
+
+```bash
+npm install
+npm run tauri dev
+# ya da sadece web önizleme:
+npm run dev
+```
+
+Tarayıcıda açıldığında dosya işlemleri fallback ile çalışır
+(dosya seç + indirerek kaydet); klasör/workspace açma yalnızca
+masaüstü uygulamasında desteklenir.
+
+## Paketleme
+
+```bash
+npm run tauri build
+```
+
+Çıktılar: `src-tauri/target/release/bundle/` altında `.AppImage` / `.deb`.
+
+## Kısayollar
+
+- `Ctrl+S` kaydet, `Ctrl+N` yeni sekme, `Ctrl+W` sekmeyi kapat
+- Hata listesinde satıra tıklayınca editör o konuma gider
