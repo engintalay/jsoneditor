@@ -10,10 +10,11 @@ export default function EditorPane() {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
 
-  // canlı doğrulama (debounce)
+  // canlı doğrulama (debounce; büyük dosyalarda daha seyrek)
   useEffect(() => {
     if (!tab) return;
-    const t = setTimeout(() => setErrors(parseErrors(tab.content)), 250);
+    const delay = tab.content.length > 1024 * 1024 ? 1000 : 250;
+    const t = setTimeout(() => setErrors(parseErrors(tab.content)), delay);
     return () => clearTimeout(t);
   }, [tab?.content, tab?.id, setErrors]);
 

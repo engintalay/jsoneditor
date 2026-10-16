@@ -7,6 +7,7 @@ import MenuBar from './components/MenuBar';
 import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
 import TabBar from './components/TabBar';
+import { confirmCloseTab } from './lib/confirm';
 import { writeFile } from './lib/fs';
 import { useStore } from './store/useStore';
 
@@ -29,7 +30,8 @@ export default function App() {
         s.newTab();
       } else if (e.key === 'w') {
         e.preventDefault();
-        if (s.activeId) s.closeTab(s.activeId);
+        const tab = s.activeTab();
+        if (tab && confirmCloseTab(tab)) s.closeTab(tab.id);
       }
     };
     window.addEventListener('keydown', onKey);

@@ -1,3 +1,4 @@
+import { confirmCloseTab } from '../lib/confirm';
 import { useStore } from '../store/useStore';
 
 export default function TabBar() {
@@ -19,7 +20,7 @@ export default function TabBar() {
             className="close"
             onClick={(e) => {
               e.stopPropagation();
-              closeTab(t.id);
+              if (confirmCloseTab(t)) closeTab(t.id);
             }}
           >
             ×
