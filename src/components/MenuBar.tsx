@@ -1,5 +1,5 @@
 import { formatJson, minifyJson, parseErrors, sortKeys } from '../lib/jsonUtils';
-import { pickAndReadFile, pickFolder, writeFile } from '../lib/fs';
+import { isTauri, pickAndReadFile, pickFolder, writeFile } from '../lib/fs';
 import { useStore } from '../store/useStore';
 
 export default function MenuBar() {
@@ -60,7 +60,7 @@ export default function MenuBar() {
   const onOpenFolder = async () => {
     const res = await pickFolder();
     if (res) store.setWorkspace(res.root, res.tree);
-    else if (!(window as unknown as { __TAURI__: unknown }).__TAURI__) {
+    else if (!isTauri) {
       alert('Klasör açma yalnızca masaüstü uygulamasında desteklenir.');
     }
   };

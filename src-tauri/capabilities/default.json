@@ -7,7 +7,19 @@
   ],
   "permissions": [
     "core:default",
+    "dialog:default",
     "fs:default",
-    "dialog:default"
+    "fs:allow-read-dir",
+    "fs:allow-read-text-file",
+    "fs:allow-write-text-file",
+    "fs:allow-exists",
+    "fs:allow-stat",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "/**" },
+        { "path": "**" }
+      ]
+    }
   ]
 }

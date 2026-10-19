@@ -2,8 +2,11 @@ import { open, save } from '@tauri-apps/plugin-dialog';
 import { readDir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { FileNode } from '../types';
 
+// Tauri v2'de window.__TAURI__ yalnizca withGlobalTauri acikken enjekte
+// edilir; IPC'nin her zaman var olan global'i __TAURI_INTERNALS__'dir.
 export const isTauri =
-  typeof window !== 'undefined' && '__TAURI__' in window;
+  typeof window !== 'undefined' &&
+  ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
 
 async function buildTree(dir: string, depth = 0): Promise<FileNode[]> {
   if (depth > 6) return [];
