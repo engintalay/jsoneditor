@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Gercek masaustu uygulamasi (Tauri): native pencere + tam dosya sistemi erisimi.
 # Kullanim: ./run-desktop.sh
+unset HTTP_PROXY HTTPS_PROXY ALL_PROXY\nunset http_proxy https_proxy all_proxy
+
+
 set -euo pipefail
 cd "$(dirname "$0")"
 
@@ -77,8 +80,11 @@ fi
 
 echo "Masaustu uygulamasi baslatiliyor (Tauri dev)..."
 # Kurumsal proxy WebKit'in localhost/127.0.0.1 isteklerine de engel
-# oluyor ("loopback from external IP"); yerel dev sunucusu icin proxy
-# degiskenlerini uygulamadan temizleyerek ciktiyoruz.
+# oluyor ("loopback from external IP"). WebKit'in resolver'i libproxy'dir
+# (kioslaverc + gsettings okur); ikisine de loopback'i disinda birakma
+# kaydi eklenmis olsa da ek guvence olarak no_proxy'yi burada veriyoruz.
 exec env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
-  -u ALL_PROXY -u all_proxy -u NO_PROXY -u no_proxy \
+  -u ALL_PROXY -u all_proxy \
+  no_proxy="localhost,127.0.0.1,::1,10.*,*.gelirler.gov.tr,*.gib.gov.tr,*.gelbim.gov.tr" \
+  NO_PROXY="localhost,127.0.0.1,::1,10.*,*.gelirler.gov.tr,*.gib.gov.tr,*.gelbim.gov.tr" \
   npm run dev:tauri
