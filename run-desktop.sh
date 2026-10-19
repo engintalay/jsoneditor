@@ -59,6 +59,17 @@ if [ "$need_sysroot" -eq 1 ]; then
   export PKG_CONFIG_PATH="$PC_DIR:$PKG_CONFIG_PATH"
 fi
 
+# WebKit (glib-networking) sistem proxy ayarini okur ve manuel modda
+# localhost/127.0.0.1 isteklerini de proxyye yonlendirebilir; kurumsal
+# proxy bunlari "loopback from external IP" olarak reddeder.
+if command -v gsettings >/dev/null 2>&1; then
+  if [ "$(gsettings get org.gnome.system.proxy mode 2>/dev/null)" = "'manual'" ]; then
+    echo "UYARI: Sistem proxy ayari 'manual' - WebKit localhost isteklerini" >&2
+    echo "  engelleyebilir ('loopback from external IP' hatasi). Gerekirse:" >&2
+    echo "  gsettings set org.gnome.system.proxy mode 'none'" >&2
+  fi
+fi
+
 if [ ! -d node_modules ]; then
   echo "node_modules yok, bagimliliklar kuruluyor..."
   npm install

@@ -29,7 +29,7 @@ ve ne kurman gerektiğini söyler.
 ## Proxy / kısıtlı ağ notu
 
 Bu repo, "crypto" içeren crates.io URL'lerini engelleyen bir proxy arkasında
-geliştirildi. İki otomatik çözüm devrede:
+geliştirildi. Üç otomatik çözüm devrede:
 
 - `crypto-common` crates.io'dan çözülemediği için `src-tauri/Cargo.toml`
   içindeki `[patch.crates-io]` onu `vendor/crypto-common` yoluna sabitler.
@@ -43,6 +43,13 @@ geliştirildi. İki otomatik çözüm devrede:
 - brew `pkg-config` sistem `.pc` dizinlerini görmez; `run-desktop.sh`
   `PKG_CONFIG_PATH`'i otomatik düzeltir. Hala eksik başlık kalırsa ilgili
   `-dev` paketlerini `~/.cache/jsoneditor-sysroot` altına sudosuz açar.
+- WebKit, sistem proxy ayarını (gsettings) okur ve manuel modda
+  `localhost`/`127.0.0.1` isteklerini de proxyye yönlendirip
+  "loopback from external IP" hatasına yol açar. Çalıştırma öncesi:
+  ```bash
+  gsettings set org.gnome.system.proxy mode 'none'
+  ```
+  (`run-desktop.sh` bu ayarı `manual` görürse uyarı verir.)
 
 Tarayıcıda açıldığında dosya işlemleri fallback ile çalışır
 (dosya seç + indirerek kaydet); klasör/workspace açma yalnızca
