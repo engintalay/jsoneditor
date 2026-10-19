@@ -6,6 +6,7 @@ import type { editor } from 'monaco-editor';
 
 export default function EditorPane() {
   const { activeTab, updateContent, newTab, setErrors, jump } = useStore();
+  const resolvedTheme = useStore((s) => s.resolvedTheme);
   const tab = activeTab();
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
   const monacoRef = useRef<Parameters<OnMount>[1] | null>(null);
@@ -67,7 +68,7 @@ export default function EditorPane() {
       <Editor
         height="100%"
         language="json"
-        theme="vs-dark"
+        theme={resolvedTheme === 'dark' ? 'vs-dark' : 'vs'}
         path={tab.id}
         value={tab.content}
         onMount={onMount}

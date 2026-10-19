@@ -65,6 +65,13 @@ export default function MenuBar() {
     }
   };
 
+  const themeLabel =
+    store.theme === 'system' ? 'Sistem' : store.theme === 'dark' ? 'Koyu' : 'Açık';
+  const onCycleTheme = () =>
+    store.setTheme(
+      store.theme === 'system' ? 'dark' : store.theme === 'dark' ? 'light' : 'system',
+    );
+
   const onSave = async () => {
     const t = store.activeTab();
     if (!t) return;
@@ -84,6 +91,9 @@ export default function MenuBar() {
         <button onClick={onSort} disabled={!tab}>Key Sırala</button>
       </div>
       <div className="actions">
+        <button onClick={onCycleTheme} title="Tema değiştir: Sistem → Koyu → Açık">
+          Tema: {themeLabel}
+        </button>
         <button
           onClick={() =>
             store.setRightPanel(store.rightPanel === 'tree' ? null : 'tree')

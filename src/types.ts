@@ -25,3 +25,6 @@ export interface FileNode {
   isDir: boolean;
   children?: FileNode[];
 }
+
+/** 'system' işletim sistemi tercihini takip eder */
+export type ThemeMode = 'dark' | 'light' | 'system';

@@ -1,8 +1,18 @@
 import { create } from 'zustand';
-import type { FileNode, JsonError, Tab } from '../types';
+import type { FileNode, JsonError, Tab, ThemeMode } from '../types';
 
 let seq = 0;
 const nid = () => `tab-${Date.now()}-${seq++}`;
+
+const readTheme = (): ThemeMode => {
+  try {
+    const v = localStorage.getItem('jsoneditor-theme');
+    if (v === 'dark' || v === 'light' || v === 'system') return v;
+  } catch {
+    /* localStorage erisilemez */
+  }
+  return 'system';
+};
 
 interface State {
   tabs: Tab[];
@@ -14,6 +24,8 @@ interface State {
   rightPanel: 'tree' | 'schema' | null;
   jump: { line: number; column: number; nonce: number } | null;
   schemaText: string;
+  theme: ThemeMode;
+  resolvedTheme: 'dark' | 'light';
 
   newTab: () => void;
   openFileTab: (path: string, name: string, content: string) => void;
@@ -27,6 +39,7 @@ interface State {
   setRightPanel: (p: State['rightPanel']) => void;
   jumpTo: (line: number, column: number) => void;
   setSchemaText: (t: string) => void;
+  setTheme: (t: ThemeMode) => void;
   activeTab: () => Tab | undefined;
 }
 
@@ -40,6 +53,8 @@ export const useStore = create<State>((set, get) => ({
   rightPanel: 'tree',
   jump: null,
   schemaText: '',
+  theme: readTheme(),
+  resolvedTheme: 'dark',
 
   newTab: () => {
     const tab: Tab = {
@@ -89,6 +104,7 @@ export const useStore = create<State>((set, get) => ({
   setRightPanel: (p) => set({ rightPanel: p }),
   jumpTo: (line, column) => set({ jump: { line, column, nonce: Date.now() } }),
   setSchemaText: (t) => set({ schemaText: t }),
+  setTheme: (t) => set({ theme: t }),
   activeTab: () => {
     const { tabs, activeId } = get();
     return tabs.find((t) => t.id === activeId);

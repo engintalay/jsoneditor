@@ -9,10 +9,12 @@ import StatusBar from './components/StatusBar';
 import TabBar from './components/TabBar';
 import { confirmCloseTab } from './lib/confirm';
 import { writeFile } from './lib/fs';
+import { useTheme } from './lib/useTheme';
 import { useStore } from './store/useStore';
 
 export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
+  useTheme();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
