@@ -33,6 +33,19 @@ async function buildTree(dir: string, depth = 0): Promise<FileNode[]> {
   return nodes;
 }
 
+export async function openFolderAt(dir: string): Promise<{
+  root: string;
+  tree: FileNode[];
+} | null> {
+  if (!isTauri) return null;
+  try {
+    const tree = await buildTree(dir);
+    return { root: dir, tree };
+  } catch {
+    return null;
+  }
+}
+
 export async function pickFolder(): Promise<{
   root: string;
   tree: FileNode[];
@@ -40,8 +53,7 @@ export async function pickFolder(): Promise<{
   if (!isTauri) return null;
   const dir = await open({ directory: true, multiple: false });
   if (typeof dir !== 'string' || !dir) return null;
-  const tree = await buildTree(dir);
-  return { root: dir, tree };
+  return openFolderAt(dir);
 }
 
 export async function pickAndReadFile(): Promise<{

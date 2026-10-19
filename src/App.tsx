@@ -9,12 +9,17 @@ import StatusBar from './components/StatusBar';
 import TabBar from './components/TabBar';
 import { confirmCloseTab } from './lib/confirm';
 import { writeFile } from './lib/fs';
+import { restoreSession, startSessionPersistence } from './lib/session';
 import { useTheme } from './lib/useTheme';
 import { useStore } from './store/useStore';
 
 export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
   useTheme();
+  useEffect(() => {
+    startSessionPersistence();
+    void restoreSession();
+  }, []);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
