@@ -65,4 +65,9 @@ if [ ! -d node_modules ]; then
 fi
 
 echo "Masaustu uygulamasi baslatiliyor (Tauri dev)..."
-exec npm run dev:tauri
+# Kurumsal proxy WebKit'in localhost/127.0.0.1 isteklerine de engel
+# oluyor ("loopback from external IP"); yerel dev sunucusu icin proxy
+# degiskenlerini uygulamadan temizleyerek ciktiyoruz.
+exec env -u HTTP_PROXY -u HTTPS_PROXY -u http_proxy -u https_proxy \
+  -u ALL_PROXY -u all_proxy -u NO_PROXY -u no_proxy \
+  npm run dev:tauri
