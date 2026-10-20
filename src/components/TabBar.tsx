@@ -11,6 +11,15 @@ export default function TabBar() {
           key={t.id}
           className={`tab ${t.id === activeId ? 'active' : ''}`}
           onClick={() => setActive(t.id)}
+          onMouseDown={(e) => {
+            if (e.button === 1) {
+              e.preventDefault();
+              if (confirmCloseTab(t)) closeTab(t.id);
+            }
+          }}
+          onAuxClick={(e) => {
+            if (e.button === 1) e.preventDefault();
+          }}
         >
           <span className="tab-label" title={t.name}>
             {t.dirty && <span className="dirty">● </span>}
