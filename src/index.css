@@ -150,3 +150,34 @@ button:disabled { opacity: 0.4; cursor: default; }
 .json-table th, .json-table td { border: 1px solid var(--border); padding: 3px 8px; text-align: left; max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .json-table th { background: var(--bg-hover); color: var(--text-dim); position: sticky; top: 0; }
 .json-table tbody tr:hover { background: var(--bg-hover); }
+
+.quickopen-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0, 0, 0, 0.35);
+  display: flex; justify-content: center; align-items: flex-start;
+  padding-top: 12vh;
+}
+.quickopen {
+  width: 560px; max-width: 90vw; max-height: 60vh;
+  background: var(--bg-panel); border: 1px solid var(--border);
+  border-radius: 6px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.quickopen-input {
+  border: none; outline: none; background: var(--bg);
+  color: var(--text); padding: 12px 14px; font-size: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.quickopen-list { list-style: none; margin: 0; padding: 4px 0; overflow: auto; }
+.quickopen-list li {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 4px 14px; cursor: pointer; white-space: nowrap;
+  overflow: hidden;
+}
+.quickopen-list li.sel { background: var(--bg-active); }
+.quickopen-list li.empty { color: var(--text-dim); cursor: default; }
+.quickopen-list .qo-name { color: var(--text); flex: none; }
+.quickopen-list .qo-path {
+  color: var(--text-dim); font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis;
+}

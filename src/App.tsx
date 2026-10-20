@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import EditorPane from './components/EditorPane';
 import ErrorPanel from './components/ErrorPanel';
+import QuickOpen from './components/QuickOpen';
 import ResizablePanel from './components/ResizablePanel';
 import SchemaPanel from './components/SchemaPanel';
 import TreePanel from './components/TreePanel';
@@ -72,6 +73,7 @@ export default function App() {
         )}
       </div>
       <StatusBar />
+      <QuickOpen />
     </div>
   );
 }
