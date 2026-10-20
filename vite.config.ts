@@ -10,7 +10,9 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
-    host: host || false,
+    // true: tum ag arayuzlerinden dinle (0.0.0.0);
+    // TAURI_DEV_HOST verilirse sadece o adrese bagla.
+    host: host || true,
     hmr: host ? { protocol: 'ws', host, port: 1421 } : undefined,
     watch: { ignored: ['**/src-tauri/**'] },
   },
