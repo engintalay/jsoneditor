@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import EditorPane from './components/EditorPane';
 import ErrorPanel from './components/ErrorPanel';
+import ResizablePanel from './components/ResizablePanel';
 import SchemaPanel from './components/SchemaPanel';
 import TreePanel from './components/TreePanel';
 import MenuBar from './components/MenuBar';
@@ -51,14 +52,24 @@ export default function App() {
     <div className="app">
       <MenuBar />
       <div className="main">
-        <Sidebar />
+        <ResizablePanel storageKey="jsoneditor-w-sidebar" defaultWidth={230} min={150} max={600} side="left">
+          <Sidebar />
+        </ResizablePanel>
         <div className="center">
           <TabBar />
           <EditorPane />
           <ErrorPanel />
         </div>
-        {rightPanel === 'tree' && <TreePanel />}
-        {rightPanel === 'schema' && <SchemaPanel />}
+        {rightPanel === 'tree' && (
+          <ResizablePanel storageKey="jsoneditor-w-right" defaultWidth={300} min={200} max={900} side="right">
+            <TreePanel />
+          </ResizablePanel>
+        )}
+        {rightPanel === 'schema' && (
+          <ResizablePanel storageKey="jsoneditor-w-right" defaultWidth={300} min={200} max={900} side="right">
+            <SchemaPanel />
+          </ResizablePanel>
+        )}
       </div>
       <StatusBar />
     </div>

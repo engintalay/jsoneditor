@@ -8,6 +8,88 @@ export const isTauri =
   typeof window !== 'undefined' &&
   ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
 
+// --- Uzak fs sunucusu (web modu) ---------------------------------------
+// Web tarayicisindan sabit bir sunucudaki klasore erisim icin Tauri
+// tarafindaki HTTP dosya sunucusuna baglanilir. Adres localStorage'da
+// tutulur; kullanici MenuBar'dan ayarlar.
+const SRV_KEY = 'jsoneditor-fs-server';
+
+export function getServerUrl(): string | null {
+  try {
+    const v = localStorage.getItem(SRV_KEY);
+    return v && v.trim() ? v.replace(/\/+$/, '') : null;
+  } catch {
+    return null;
+  }
+}
+
+export function setServerUrl(url: string | null): void {
+  try {
+    if (url) localStorage.setItem(SRV_KEY, url.replace(/\/+$/, ''));
+    else localStorage.removeItem(SRV_KEY);
+  } catch {
+    /* saklama yoksa yoksay */
+  }
+}
+
+export const isServerMode = (): boolean => !isTauri && !!getServerUrl();
+
+async function srv(route: string, path: string, init?: RequestInit): Promise<Response> {
+  const base = getServerUrl();
+  if (!base) throw new Error('Sunucu adresi ayarlanmadı');
+  const res = await fetch(`${base}${route}?path=${encodeURIComponent(path)}`, init);
+  if (!res.ok) {
+    const msg = await res.text().catch(() => '');
+    throw new Error(`${res.status}: ${msg || res.statusText}`);
+  }
+  return res;
+}
+
+async function buildServerTree(rel: string, depth = 0): Promise<FileNode[]> {
+  if (depth > 6) return [];
+  const res = await srv('/fs/list', rel);
+  const { entries } = (await res.json()) as {
+    entries: { name: string; path: string; isDir: boolean }[];
+  };
+  const nodes: FileNode[] = [];
+  const sorted = [...entries].sort((a, b) => {
+    if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
+  for (const e of sorted) {
+    const full = rel === '/' ? `/${e.name}` : `${rel.replace(/\/$/, '')}/${e.name}`;
+    if (e.isDir) {
+      nodes.push({ name: e.name, path: full, isDir: true, children: await buildServerTree(full, depth + 1) });
+    } else if (/\.jsonc?$|\.txt$/i.test(e.name)) {
+      nodes.push({ name: e.name, path: full, isDir: false });
+    }
+  }
+  return nodes;
+}
+
+/** Sunucudaki kok klasoru (verilen yol) tarayip agac dondurur. */
+export async function openServerFolder(root: string): Promise<{
+  root: string;
+  tree: FileNode[];
+} | null> {
+  try {
+    const tree = await buildServerTree(root);
+    return { root, tree };
+  } catch {
+    return null;
+  }
+}
+
+/** Sunucu ile baglanti testi. */
+export async function pingServer(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(`${url.replace(/\/+$/, '')}/fs/health`, { method: 'GET' });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 async function buildTree(dir: string, depth = 0): Promise<FileNode[]> {
   if (depth > 6) return [];
   const entries = await readDir(dir);
@@ -37,7 +119,10 @@ export async function openFolderAt(dir: string): Promise<{
   root: string;
   tree: FileNode[];
 } | null> {
-  if (!isTauri) return null;
+  if (!isTauri) {
+    if (isServerMode()) return openServerFolder(dir);
+    return null;
+  }
   try {
     const tree = await buildTree(dir);
     return { root: dir, tree };
@@ -61,6 +146,14 @@ export async function pickAndReadFile(): Promise<{
   name: string;
   content: string;
 } | null> {
+  if (isServerMode()) {
+    const p = prompt('Sunucudaki dosya yolu (örn. /data/json/a.json):', '/');
+    if (p === null) return null;
+    const path = p.trim();
+    if (!path) return null;
+    const content = await readFileByPath(path);
+    return { path, name: path.split('/').pop() ?? path, content };
+  }
   if (isTauri) {
     const file = await open({
       multiple: false,
@@ -93,6 +186,11 @@ export async function writeFile(
   suggestedName: string,
   content: string,
 ): Promise<{ path: string; name: string } | null> {
+  if (isServerMode()) {
+    const targetPath = currentPath ?? `/${suggestedName}`;
+    await srv('/fs/write', targetPath, { method: 'POST', body: content });
+    return { path: targetPath, name: targetPath.split('/').pop() ?? suggestedName };
+  }
   if (isTauri) {
     let target = currentPath;
     if (!target) {
@@ -117,6 +215,7 @@ export async function writeFile(
 }
 
 export async function readFileByPath(path: string): Promise<string> {
+  if (isServerMode()) return (await srv('/fs/read', path)).text();
   if (!isTauri) throw new Error('Tauri dışında yoldan okuma desteklenmiyor');
   return readTextFile(path);
 }

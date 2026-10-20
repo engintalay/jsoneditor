@@ -79,6 +79,11 @@ if [ ! -d node_modules ]; then
 fi
 
 echo "Masaustu uygulamasi baslatiliyor (Tauri dev)..."
+# Web istemcisi icin HTTP dosya sunucusu: JSONEDITOR_FS_ROOT verilirse
+# Tauri ayni islem icinde 0.0.0.0:${JSONEDITOR_FS_PORT:-1422} dinler.
+if [ -n "${JSONEDITOR_FS_ROOT:-}" ]; then
+  echo "  + web fs sunucusu acik olacak: ${JSONEDITOR_FS_ROOT} (port ${JSONEDITOR_FS_PORT:-1422})"
+fi
 # Kurumsal proxy WebKit'in localhost/127.0.0.1 isteklerine de engel
 # oluyor ("loopback from external IP"). WebKit'in resolver'i libproxy'dir
 # (kioslaverc + gsettings okur); ikisine de loopback'i disinda birakma
