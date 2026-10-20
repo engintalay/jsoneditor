@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { readFileByPath } from '../lib/fs';
+import { refreshWorkspace } from '../lib/useWorkspaceRefresh';
 import { useStore } from '../store/useStore';
 import type { FileNode } from '../types';
 
@@ -45,7 +46,16 @@ export default function Sidebar() {
     <div className="sidebar">
       <h3>Explorer</h3>
       <div className="ws-root" title={workspaceRoot ?? ''}>
-        {workspaceRoot ?? 'Workspace açık değil'}
+        <span>{workspaceRoot ?? 'Workspace açık değil'}</span>
+        {workspaceRoot && (
+          <button
+            title="Ağaçı yenile"
+            style={{ padding: '0 6px', color: 'var(--text-dim)' }}
+            onClick={() => void refreshWorkspace(workspaceRoot)}
+          >
+            ↻
+          </button>
+        )}
       </div>
       <div className="filetree">
         {fileTree.length === 0 && (

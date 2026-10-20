@@ -11,11 +11,13 @@ import { confirmCloseTab } from './lib/confirm';
 import { writeFile } from './lib/fs';
 import { restoreSession, startSessionPersistence } from './lib/session';
 import { useTheme } from './lib/useTheme';
+import { useWorkspaceRefresh } from './lib/useWorkspaceRefresh';
 import { useStore } from './store/useStore';
 
 export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
   useTheme();
+  useWorkspaceRefresh();
   useEffect(() => {
     startSessionPersistence();
     void restoreSession();
