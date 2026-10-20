@@ -12,7 +12,7 @@ export default function TabBar() {
           className={`tab ${t.id === activeId ? 'active' : ''}`}
           onClick={() => setActive(t.id)}
         >
-          <span>
+          <span className="tab-label" title={t.name}>
             {t.dirty && <span className="dirty">● </span>}
             {t.name}
           </span>

@@ -106,8 +106,12 @@ button:disabled { opacity: 0.4; cursor: default; }
   white-space: nowrap; max-width: 220px;
 }
 .tabbar .tab.active { background: var(--bg); }
+.tabbar .tab .tab-label {
+  flex: 1; min-width: 0; overflow: hidden;
+  text-overflow: ellipsis; white-space: nowrap;
+}
 .tabbar .tab .dirty { color: var(--dirty); }
-.tabbar .tab .close { padding: 0 4px; color: var(--text-dim); }
+.tabbar .tab .close { flex: none; padding: 0 4px; color: var(--text-dim); }
 .tabbar .tab .close:hover { color: var(--text); background: var(--bg-active); }
 .editor-wrap { flex: 1; min-height: 0; }
 .editor-wrap .empty {
