@@ -9,6 +9,13 @@ cd "$(dirname "$0")"
 
 missing=0
 
+# crypto-common vendor kopyasindaki generic-array 0.14 deprecated uyarilari
+# susturulur (idempotent; vendor yeniden kurulsa da uygulanir).
+if [ -f vendor/crypto-common/Cargo.toml ] && \
+   ! grep -q '^\[lints.rust\]' vendor/crypto-common/Cargo.toml; then
+  printf '\n[lints.rust]\ndeprecated = "allow"\n' >> vendor/crypto-common/Cargo.toml
+fi
+
 if ! command -v node >/dev/null 2>&1; then
   echo "HATA: node bulunamadi. Once Node 20+ kurun." >&2
   missing=1
