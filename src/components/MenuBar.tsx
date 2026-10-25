@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { formatJson, minifyJson, parseErrors, sortKeys } from '../lib/jsonUtils';
 import {
   getServerUrl,
@@ -16,6 +17,8 @@ export default function MenuBar() {
   const store = useStore();
   const tab = store.activeTab();
   const serverMode = isServerMode();
+  const [connectUrl, setConnectUrl] = useState<string>('');
+  const [showConnectModal, setShowConnectModal] = useState(false);
 
   const needValid = (): string | null => {
     if (!tab) return null;
@@ -74,7 +77,6 @@ export default function MenuBar() {
       if (res) store.setWorkspace(res.root, res.tree);
       return;
     }
-    // Web: sunucu bagliysa kok klasor yolunu sor
     if (!isServerMode()) {
       alert('Klasör açmak için önce bir dosya sunucusuna bağlanın.');
       return;
@@ -87,12 +89,10 @@ export default function MenuBar() {
   };
 
   const onConnectServer = async () => {
-    const cur = getServerUrl() ?? '';
-    const url = prompt(
-      'Dosya sunucusu adresi (boş bırakıp onaylarsanız bağlantı kaldırılır):',
-      cur || 'http://10.251.74.186:1422',
-    );
-    if (url === null) return;
+    setShowConnectModal(true);
+  };
+
+  const handleConnectServer = async (url: string) => {
     const trimmed = url.trim();
     if (!trimmed) {
       setServerUrl(null);
@@ -139,13 +139,98 @@ export default function MenuBar() {
           Tema: {themeLabel}
         </button>
         {!isTauri && (
-          <button
-            onClick={onConnectServer}
-            title={serverMode ? `Sunucu: ${getServerUrl()}` : 'Dosya sunucusuna bağlan'}
-            style={serverMode ? { color: 'var(--ok)' } : undefined}
-          >
-            Sunucu: {serverMode ? 'bağlı' : 'yok'}
-          </button>
+          <>
+            <button
+              onClick={onConnectServer}
+              title={serverMode ? `Sunucu: ${getServerUrl()}` : 'Dosya sunucusuna bağlan'}
+              style={serverMode ? { color: 'var(--ok)' } : undefined}
+            >
+              Sunucu: {serverMode ? 'bağlı' : 'yok'}
+            </button>
+            <div className="modal-overlay" role="dialog" aria-modal="true"
+              style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'rgba(0,0,0,0.5)',
+                display: showConnectModal ? 'flex' : 'none',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 1000,
+              }}
+            >
+              <div className="modal"
+                style={{
+                  background: 'var(--bg)',
+                  padding: '24px',
+                  borderRadius: 8,
+                  width: '300px',
+                  maxWidth: '90vw',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                }}
+              >
+                <h3>Sunucu Bağlantısı</h3>
+                <p style={{ marginBottom: '16px', color: 'var(--text-dim)' }}>
+                  Dosya sunucusu adresi:
+                </p>
+                <input
+                  type="text"
+                  value={connectUrl}
+                  onChange={(e) => setConnectUrl(e.target.value)}
+                  placeholder="http://host:port"
+                  style={{
+                    width: '100%',
+                    padding: '8px',
+                    marginBottom: '16px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 4,
+                    fontSize: '14px',
+                    background: 'var(--input-bg)',
+                    color: 'var(--text)',
+                  }}
+                />
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      setShowConnectModal(false);
+                      setConnectUrl('');
+                    }}
+                    style={{
+                      cursor: 'pointer',
+                      padding: '4px 12px',
+                      border: '1px solid var(--border)',
+                      borderRadius: 4,
+                      background: 'var(--btn-bg)',
+                      color: 'var(--text)',
+                      fontSize: '14px',
+                    }}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleConnectServer(connectUrl);
+                      setShowConnectModal(false);
+                      setConnectUrl('');
+                    }}
+                    style={{
+                      cursor: 'pointer',
+                      padding: '4px 12px',
+                      border: '1px solid var(--accent)',
+                      borderRadius: 4,
+                      background: 'var(--accent)',
+                      color: 'var(--btn-text)',
+                      fontSize: '14px',
+                    }}
+                  >
+                    Bağla
+                  </button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
         <button
           onClick={() =>
