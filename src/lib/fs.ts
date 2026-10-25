@@ -34,6 +34,27 @@ export function setServerUrl(url: string | null): void {
 
 export const isServerMode = (): boolean => !isTauri && !!getServerUrl();
 
+/** JSON içerik geçerliliğini kontrol eder */
+function isValidJsonContent(content: string): boolean {
+  if (!content.trim()) return true;
+  try {
+    JSON.parse(content);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Yol, verilen kök dizin içinde kalıyor mu? */
+function validatePathWithinRoot(path: string, root: string): boolean {
+  const normalizedPath = path.replace(/\\/g, '/').replace(/\/+/g, '/');
+  const normalizedRoot = root.replace(/\\/g, '/').replace(/\/+/g, '/');
+  if (!normalizedPath.startsWith(normalizedRoot)) return false;
+  if (normalizedPath === normalizedRoot) return true;
+  const relative = normalizedPath.slice(normalizedRoot.length);
+  return !relative.includes('..');
+}
+
 async function srv(route: string, path: string, init?: RequestInit): Promise<Response> {
   const base = getServerUrl();
   if (!base) throw new Error('Sunucu adresi ayarlanmadı');
@@ -120,7 +141,13 @@ export async function openFolderAt(dir: string): Promise<{
   tree: FileNode[];
 } | null> {
   if (!isTauri) {
-    if (isServerMode()) return openServerFolder(dir);
+    if (isServerMode()) {
+      if (!validatePathWithinRoot(dir, '/')) {
+        alert('Geçersiz klasör yolu: yol kök dizini dışına çıkıyor.');
+        return null;
+      }
+      return openServerFolder(dir);
+    }
     return null;
   }
   try {
@@ -151,8 +178,16 @@ export async function pickAndReadFile(): Promise<{
     if (p === null) return null;
     const path = p.trim();
     if (!path) return null;
-    const content = await readFileByPath(path);
-    return { path, name: path.split('/').pop() ?? path, content };
+    try {
+      const content = await readFileByPath(path);
+      if (!isValidJsonContent(content) && /\.jsonc?$/i.test(path)) {
+        alert('Uyarı: Seçilen dosya geçerli JSON içeriyor değil.');
+      }
+      return { path, name: path.split('/').pop() ?? path, content };
+    } catch {
+      alert('Dosya okunamadı: ' + path);
+      return null;
+    }
   }
   if (isTauri) {
     const file = await open({
@@ -162,6 +197,9 @@ export async function pickAndReadFile(): Promise<{
     if (typeof file !== 'string' || !file) return null;
     const content = await readTextFile(file);
     const name = file.split('/').pop() ?? file;
+    if (!isValidJsonContent(content) && /\.jsonc?$/i.test(name)) {
+      alert('Uyarı: Seçilen dosya geçerli JSON içeriyor değil.');
+    }
     return { path: file, name, content };
   }
   // tarayıcı fallback
@@ -173,8 +211,13 @@ export async function pickAndReadFile(): Promise<{
       const f = input.files?.[0];
       if (!f) return resolve(null);
       const r = new FileReader();
-      r.onload = () =>
-        resolve({ path: f.name, name: f.name, content: String(r.result ?? '') });
+      r.onload = () => {
+        const content = String(r.result ?? '');
+        if (!isValidJsonContent(content) && /\.jsonc?$/.test(f.name)) {
+          alert('Uyarı: Seçilen dosya geçerli JSON içeriyor değil.');
+        }
+        resolve({ path: f.name, name: f.name, content });
+      };
       r.readAsText(f);
     };
     input.click();
@@ -188,6 +231,10 @@ export async function writeFile(
 ): Promise<{ path: string; name: string } | null> {
   if (isServerMode()) {
     const targetPath = currentPath ?? `/${suggestedName}`;
+    if (!validatePathWithinRoot(targetPath, '/')) {
+      alert('Uyarı: Yazılacak yol güvenli değildir, engellendi.');
+      return null;
+    }
     await srv('/fs/write', targetPath, { method: 'POST', body: content });
     return { path: targetPath, name: targetPath.split('/').pop() ?? suggestedName };
   }
@@ -200,6 +247,10 @@ export async function writeFile(
       });
       if (!picked) return null;
       target = picked;
+      if (!validatePathWithinRoot(target, '')) {
+        alert('Uyarı: Seçilen yol güvenli değildir, kaydedilmedi.');
+        return null;
+      }
     }
     await writeTextFile(target, content);
     const name = target.split('/').pop() ?? target;
