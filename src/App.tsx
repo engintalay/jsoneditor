@@ -28,6 +28,9 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
+      // Inputlara odakli iken kısayolları engelle
+      if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
+      if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA') return;
       const s = useStore.getState();
       if (e.key === 's') {
         e.preventDefault();
