@@ -10,7 +10,7 @@ type Segments = (string | number)[];
 function Value({ v }: { v: unknown }) {
   if (v === null) return <span className="null">null</span>;
   if (typeof v === 'string')
-    return <span className="str">"{v.length > 120 ? `${v.slice(0, 120)}…` : v}"</span>;
+    return <span className="str">"{escapeHtml(v.length > 120 ? `${v.slice(0, 120)}…` : v)}"</span>;
   if (typeof v === 'number') return <span className="num">{v}</span>;
   if (typeof v === 'boolean') return <span className="bool">{String(v)}</span>;
   return null;
@@ -428,4 +428,11 @@ export default function TreePanel() {
       )}
     </div>
   );
+}
+
+/** HTML entities ile karakterleri kaçıstır */
+function escapeHtml(text: string): string {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
 }
