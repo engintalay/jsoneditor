@@ -29,8 +29,16 @@ fi
 if command -v dpkg >/dev/null 2>&1; then
   for pkg in libwebkit2gtk-4.1-dev librsvg2-dev; do
     if ! dpkg -s "$pkg" >/dev/null 2>&1; then
-      echo "HATA: sistem paketi eksik: $pkg" >&2
-      missing=1
+      # dpkg bilmiyorsa pkg-config ile kontrol et; -dev/ lib öneklerini temizle
+      # librsvg için özel isim mapping: librsvg2-dev -> librsvg-2.0
+      pc_name=$(echo "$pkg" | sed 's/^lib//;s/-dev$//')
+      case "$pc_name" in
+        rsvg2) pc_name="librsvg-2.0" ;;
+      esac
+      if ! PKG_CONFIG_PATH="/home/engintalay/.cache/jsoneditor-sysroot/usr/lib/x86_64-linux-gnu/pkgconfig" pkg-config --exists "$pc_name" 2>/dev/null; then
+        echo "HATA: sistem paketi eksik: $pkg" >&2
+        missing=1
+      fi
     fi
   done
   if [ "$missing" -eq 1 ]; then

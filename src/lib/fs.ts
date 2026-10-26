@@ -113,27 +113,47 @@ export async function pingServer(url: string): Promise<boolean> {
 
 async function buildTree(dir: string, depth = 0): Promise<FileNode[]> {
   if (depth > 6) return [];
-  const entries = await readDir(dir);
-  const nodes: FileNode[] = [];
-  const sorted = [...entries].sort((a, b) => {
-    if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
-    return a.name!.localeCompare(b.name!);
-  });
-  for (const e of sorted) {
-    if (!e.name || e.name.startsWith('.')) continue;
-    const path = `${dir}/${e.name}`;
-    if (e.isDirectory) {
-      nodes.push({
-        name: e.name,
-        path,
-        isDir: true,
-        children: await buildTree(path, depth + 1),
-      });
-    } else if (/\.jsonc?$|\.txt$/i.test(e.name)) {
-      nodes.push({ name: e.name, path, isDir: false });
+  const SKIP_DIRS = new Set(['node_modules', '.git', '.hg', '.svn', 'target', 'dist', 'build', '.next', '.nuxt', '.cache', '.turbo', '.vite', 'coverage']);
+  try {
+    const entries = await readDir(dir);
+    const nodes: FileNode[] = [];
+    const sorted = [...entries].sort((a, b) => {
+      if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+      return a.name!.localeCompare(b.name!);
+    });
+    for (const e of sorted) {
+      if (!e.name) continue;
+      if (e.isDirectory && e.name.startsWith('.')) {
+        continue;
+      }
+      const path = `${dir}/${e.name}`;
+      if (e.isDirectory) {
+        if (SKIP_DIRS.has(e.name)) {
+          continue;
+        }
+        try {
+          nodes.push({
+            name: e.name,
+            path,
+            isDir: true,
+            children: await buildTree(path, depth + 1),
+          });
+        } catch {
+          nodes.push({
+            name: e.name,
+            path,
+            isDir: true,
+            children: [],
+          });
+        }
+      } else if (/\.jsonc?$|\.txt$/i.test(e.name)) {
+        nodes.push({ name: e.name, path, isDir: false });
+      }
     }
+    return nodes;
+  } catch {
+    throw new Error('Klasör okunamadı');
   }
-  return nodes;
 }
 
 export async function openFolderAt(dir: string): Promise<{
@@ -163,9 +183,13 @@ export async function pickFolder(): Promise<{
   tree: FileNode[];
 } | null> {
   if (!isTauri) return null;
-  const dir = await open({ directory: true, multiple: false });
-  if (typeof dir !== 'string' || !dir) return null;
-  return openFolderAt(dir);
+  try {
+    const dir = await open({ directory: true, multiple: false });
+    if (typeof dir !== 'string' || !dir) return null;
+    return openFolderAt(dir);
+  } catch {
+    return null;
+  }
 }
 
 export async function pickAndReadFile(): Promise<{
