@@ -1,11 +1,9 @@
 #!/usr/bin/env bash
 # Gercek masaustu uygulamasi (Tauri): native pencere + tam dosya sistemi erisimi.
 # Kullanim: ./run-desktop.sh
-unset HTTP_PROXY HTTPS_PROXY ALL_PROXY\nunset http_proxy https_proxy all_proxy
-
-
 set -euo pipefail
 cd "$(dirname "$0")"
+export LC_ALL=C   # apt-cache/sed ciktilari sabit dilde olmali
 
 missing=0
 
@@ -26,28 +24,6 @@ if ! command -v cargo >/dev/null 2>&1 || ! command -v rustc >/dev/null 2>&1; the
   missing=1
 fi
 
-if command -v dpkg >/dev/null 2>&1; then
-  for pkg in libwebkit2gtk-4.1-dev librsvg2-dev; do
-    if ! dpkg -s "$pkg" >/dev/null 2>&1; then
-      # dpkg bilmiyorsa pkg-config ile kontrol et; -dev/ lib öneklerini temizle
-      # librsvg için özel isim mapping: librsvg2-dev -> librsvg-2.0
-      pc_name=$(echo "$pkg" | sed 's/^lib//;s/-dev$//')
-      case "$pc_name" in
-        rsvg2) pc_name="librsvg-2.0" ;;
-      esac
-      if ! PKG_CONFIG_PATH="/home/engintalay/.cache/jsoneditor-sysroot/usr/lib/x86_64-linux-gnu/pkgconfig" pkg-config --exists "$pc_name" 2>/dev/null; then
-        echo "HATA: sistem paketi eksik: $pkg" >&2
-        missing=1
-      fi
-    fi
-  done
-  if [ "$missing" -eq 1 ]; then
-    echo "" >&2
-    echo "Eksik sistem bagimliliklarini kurmak icin:" >&2
-    echo "  sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev" >&2
-  fi
-fi
-
 if [ "$missing" -eq 1 ]; then
   exit 1
 fi
@@ -56,25 +32,79 @@ fi
 # kullaniliyorsa varsayilan arama yolu sistem dizinlerini icermez).
 export PKG_CONFIG_PATH="/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}"
 
-# Hala eksik kalan basliklar varsa (sudosuz makine), .deb'leri kullanici
-# alanina acip pkg-config'i oraya da yonlendirir (idempotent).
 SYSROOT="$HOME/.cache/jsoneditor-sysroot"
 PC_DIR="$SYSROOT/usr/lib/x86_64-linux-gnu/pkgconfig"
-need_sysroot=0
-for pc in dbus-1 cairo pango atk gdk-pixbuf-2.0 libsoup-3.0 webkit2gtk-4.1 javascriptcoregtk-4.1; do
-  PKG_CONFIG_PATH="$PKG_CONFIG_PATH" pkg-config --exists "$pc" 2>/dev/null || need_sysroot=1
-done
-if [ "$need_sysroot" -eq 1 ]; then
+
+# Tauri/WebKit derlemesi icin pkg-config'te bulunmasi sarta kosulan .pc'ler.
+NEEDED_PC="glib-2.0 gtk+-3.0 atk cairo pango gdk-pixbuf-2.0 dbus-1 \
+libsoup-3.0 webkit2gtk-4.1 javascriptcoregtk-4.1 librsvg-2.0"
+
+pc_missing() {
+  local pc
+  for pc in $NEEDED_PC; do
+    pkg-config --exists "$pc" 2>/dev/null || return 0
+  done
+  return 1
+}
+
+# Sysroot'a indirilecek paketleri apt-veritabanindan cozer: recursive
+# kapatimdaki tum *-dev paketleri + bunlarin dogrudan lib bagimliliklari.
+sysroot_packages() {
+  local base="libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev librsvg2-dev"
+  local devs rt p
+  devs=$(apt-cache depends --recurse --no-recommends --no-suggests \
+      --no-conflicts --no-breaks --no-replaces --no-enhances $base 2>/dev/null |
+    grep -vE '^[[:space:]]|^$' | sed 's/:$//' | grep -E -- '-dev$' | sort -u)
+  rt=""
+  for p in $devs; do
+    # 'Depends: pkg', 'Depends: <sanal>' ve sanal alternatif satirlarini cozer.
+    rt="$rt
+$(apt-cache depends "$p" 2>/dev/null |
+  sed -n 's/^[[:space:]]*\([^:]*: \)\{0,1\}<\{0,1\}\([a-z0-9][a-z0-9.+-]*\)>\{0,1\}$/\2/p' |
+  grep -E '^lib')"
+  done
+  printf '%s\n%s\n%s\n' "$devs" "$rt" "$base" | grep -v '^$' | sort -u
+}
+
+# Hala eksik kalan basliklar varsa (sudosuz makine), .deb'leri kullanici
+# alanina acip pkg-config'i oraya da yonlendirir (idempotent).
+export PKG_CONFIG_PATH="$PC_DIR:$PKG_CONFIG_PATH"
+if command -v apt-get >/dev/null 2>&1 && pc_missing; then
   echo "Eksik sistem basliklari kullanici alanina kuruluyor (sudo gerekmez)..."
   mkdir -p "$SYSROOT"
   TMPD="$(mktemp -d)"
-  (cd "$TMPD" && apt-get download libdbus-1-dev libcairo2-dev libpango1.0-dev libatk1.0-dev libgdk-pixbuf-2.0-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev libjavascriptcoregtk-4.1-dev >/dev/null 2>&1)
-  for f in "$TMPD"/*.deb; do dpkg-deb -x "$f" "$SYSROOT"; done
-  rm -rf "$TMPD"
-  grep -rl "^prefix=/usr" "$PC_DIR" | while read -r pc; do
-    sed -i "s|^prefix=/usr|prefix=$SYSROOT/usr|" "$pc"
+  pkgs=""
+  for p in $(sysroot_packages); do
+    apt-cache policy "$p" 2>/dev/null | grep -qE 'Candidate: (none|\(none\))$' ||
+      pkgs="$pkgs $p"
   done
-  export PKG_CONFIG_PATH="$PC_DIR:$PKG_CONFIG_PATH"
+  # apt-get download tek seferde basarisiz olursa paket paket dene.
+  if ! (cd "$TMPD" && apt-get download $pkgs >/dev/null 2>&1); then
+    for p in $pkgs; do
+      (cd "$TMPD" && apt-get download "$p" >/dev/null 2>&1) ||
+        echo "UYARI: indirilemedi (atlandi): $p" >&2
+    done
+  fi
+  for f in "$TMPD"/*.deb; do
+    [ -e "$f" ] && dpkg-deb -x "$f" "$SYSROOT"
+  done
+  rm -rf "$TMPD"
+  # .pc dosyalardaki mutlak /usr yollarini sysroot'a cevir.
+  while IFS= read -r pc; do
+    sed -i "s|^prefix=/usr|prefix=$SYSROOT/usr|" "$pc"
+  done < <(grep -rl '^prefix=/usr' "$PC_DIR" 2>/dev/null || true)
+fi
+
+if pc_missing; then
+  echo "HATA: pkg-config gerekli kütüphaneleri bulamiyor." >&2
+  for pc in $NEEDED_PC; do
+    pkg-config --exists "$pc" 2>/dev/null ||
+      echo "  eksik: $pc" >&2
+  done
+  echo "" >&2
+  echo "Cozum icin sistem paketlerini kurmayi deneyin:" >&2
+  echo "  sudo apt-get install -y libwebkit2gtk-4.1-dev librsvg2-dev" >&2
+  exit 1
 fi
 
 # WebKit (glib-networking) sistem proxy ayarini okur ve manuel modda

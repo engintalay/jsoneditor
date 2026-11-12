@@ -97,6 +97,25 @@ npm run tauri build
 
 Çıktılar: `src-tauri/target/release/bundle/` altında `.AppImage` / `.deb`.
 
+## Versiyonlama
+
+Sürüm numarasının **tek kaynağı `package.json`** dosyasıdır:
+
+- `src-tauri/tauri.conf.json` içindeki `"version": "../package.json"`
+  referansı ile deb/rpm/AppImage paket adları bu numarayı kullanır.
+- `src-tauri/Cargo.toml` sürümü `release.sh` tarafından senkronlanır.
+- Durum çubuğunda `vX.Y.Z` olarak gösterilir (derleme zamanında gömülür).
+
+Yeni sürüm yayınlamak için:
+
+```bash
+./release.sh patch    # 0.1.0 -> 0.1.1  (veya minor | major | doğrudan 1.2.3)
+```
+
+Betik sürüm dosyalarını günceller, `chore(release): X.Y.Z` commit'i atar ve
+`X.Y.Z` git tag'i ekler. Ardından `./build-desktop.sh` ile dağıtım
+paketlerini üretebilirsiniz.
+
 ## Kısayollar
 
 - `Ctrl+S` kaydet, `Ctrl+N` yeni sekme, `Ctrl+W` sekmeyi kapat

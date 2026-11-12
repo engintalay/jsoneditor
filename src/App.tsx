@@ -28,21 +28,25 @@ export default function App() {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
-      // Inputlara odakli iken kısayolları engelle
-      if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
-      if (e.target && (e.target as HTMLElement).tagName === 'TEXTAREA') return;
+      // Inputlara odakli iken kısayolları engelle.
+      // Monaco editörünün gizli girdi alani da <textarea>'dir; kaydetmenin
+      // editör içinde de çalismasi icin o alan muaf tutulur.
+      const el = e.target as HTMLElement | null;
+      if (el?.tagName === 'INPUT') return;
+      if (el?.tagName === 'TEXTAREA' && !el.classList.contains('inputarea')) return;
       const s = useStore.getState();
-      if (e.key === 's') {
+      const key = e.key.toLowerCase();
+      if (key === 's') {
         e.preventDefault();
         const tab = s.activeTab();
         if (!tab) return;
         writeFile(tab.path, tab.name, tab.content).then((res) => {
           if (res) s.markSaved(tab.id, res.path, res.name);
         });
-      } else if (e.key === 'n') {
+      } else if (key === 'n') {
         e.preventDefault();
         s.newTab();
-      } else if (e.key === 'w') {
+      } else if (key === 'w') {
         e.preventDefault();
         const tab = s.activeTab();
         if (tab && confirmCloseTab(tab)) s.closeTab(tab.id);

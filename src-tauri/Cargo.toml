@@ -32,3 +32,5 @@ tauri-plugin-dialog = "2"
 # dahil degildir; kurulum icin README "Proxy notu"na bakin.
 [patch.crates-io]
 crypto-common = { path = "../vendor/crypto-common" }
+generic-array = { path = "../vendor/generic-array" }
+typenum = { path = "../vendor/typenum" }

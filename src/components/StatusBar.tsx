@@ -14,6 +14,7 @@ export default function StatusBar() {
         </span>
       )}
       <span className="spacer" />
+      <span title="Uygulama surumu">v{__APP_VERSION__}</span>
       <span>{tab?.name ?? 'dosya yok'}</span>
       <span>JSON</span>
       <span>UTF-8</span>
