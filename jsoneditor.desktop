@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=JSON Editor
+Exec=/home/engin/projects/jsoneditor/src-tauri/target/debug/jsoneditor %F
+Type=Application
+MimeType=application/json;application/jsonc
+Extensions=json,jsonc
+Icon=/home/engin/projects/jsoneditor/src-tauri/icons/128x128.png
+Categories=Utility;TextEditor;
+Terminal=false
+SingleInstance=true

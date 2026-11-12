@@ -18,12 +18,82 @@ import { useStore } from './store/useStore';
 
 export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
+  const store = useStore();
   useTheme();
   useWorkspaceRefresh();
+  
   useEffect(() => {
     startSessionPersistence();
     void restoreSession();
   }, []);
+  
+  // Tauri'den gelen open events dinleyicisi
+  useEffect(() => {
+    const checkTauriAndListen = async () => {
+      // Tauri kontrolu
+      const isTauri = typeof window !== 'undefined' && 
+        ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
+      
+      if (!isTauri) return;
+      
+      try {
+        // Tauri IPC ile open event dinle
+        const { invoke } = await import('@tauri-apps/api/core');
+        const { listen } = await import('@tauri-apps/api/event');
+        
+        // Uygulama baslarken mevcut args'i kontrol et
+        try {
+          const args = await invoke<string[]>('get_args');
+          if (args && args.length > 0) {
+            // Dosya yollarini handle et
+            const jsonFiles = args.filter(a => a.endsWith('.json') || a.endsWith('.jsonc'));
+            if (jsonFiles.length > 0) {
+              for (const file of jsonFiles) {
+                try {
+                  const content = await invoke<string>('read_file', { path: file });
+                  const name = file.split('/').pop() || file;
+                  store.openFileTab(file, name, content);
+                } catch (e) {
+                  console.error('Dosya acilamadi:', file, e);
+                }
+              }
+            }
+          }
+        } catch (e) {
+          // Args yoksa veya basarili olmazsa devam et
+          console.log('Args okunamadi veya args yok:', e);
+        }
+        
+        // Tauri'den gelen open event'leri dinle
+        const unlisten = await listen('open-files', (event: any) => {
+          const files = event.payload as string[];
+          if (files && files.length > 0) {
+            files.forEach(file => {
+              try {
+                invoke<string>('read_file', { path: file }).then(content => {
+                  const name = file.split('/').pop() || file;
+                  store.openFileTab(file, name, content);
+                }).catch(err => {
+                  console.error('Dosya okunamadi:', file, err);
+                });
+              } catch (e) {
+                console.error('Open file error:', e);
+              }
+            });
+          }
+        });
+        
+        return () => {
+          unlisten();
+        };
+      } catch (e) {
+        console.error('Tauri open event setup error:', e);
+      }
+    };
+    
+    checkTauriAndListen();
+  }, [store]);
+  
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
