@@ -1,22 +1,19 @@
 mod fs_server;
 
-use tauri::Emitter;
 use serde::Deserialize;
-use tauri_plugin_fs::read_text_file;
-
-#[derive(Deserialize)]
-struct ReadFileRequest {
-    path: String,
-}
+use tauri::{Emitter, AppHandle};
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
-    read_text_file(&path).map_err(|e| e.to_string())
+    std::fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
-fn open_files(files: Vec<String>) {
+fn open_files(app: AppHandle, files: Vec<String>) {
     // Event'i frontend'e gönder
+    if let Err(e) = app.emit_all("open-files", files) {
+        eprintln!("Failed to emit open-files event: {}", e);
+    }
 }
 
 #[tauri::command]

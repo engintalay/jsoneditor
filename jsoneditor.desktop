@@ -1,6 +1,6 @@
 [Desktop Entry]
 Name=JSON Editor
-Exec=/home/engin/projects/jsoneditor/src-tauri/target/debug/jsoneditor %F
+Exec=/home/engin/projects/jsoneditor/src-tauri/target/release/bundle/appimage/"JSON Editor_0.1.0_amd64.AppImage" %F
 Type=Application
 MimeType=application/json;application/jsonc
 Extensions=json,jsonc

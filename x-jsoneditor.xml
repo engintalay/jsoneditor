@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <mime-info xmlns="http://www.freedesktop.org/standards/shared-mime-info">
-  <mime-type type="application/x-jsoneditor">
-    <sub-class-of type="application/json"/>
-    <comment>JSON Editor file</comment>
+  <mime-type type="application/json">
+    <sub-class-of type="text/plain"/>
+    <comment>JSON file</comment>
     <glob pattern="*.json"/>
     <glob pattern="*.jsonc"/>
   </mime-type>
