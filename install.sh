@@ -131,9 +131,19 @@ fi
 echo ""
 echo "İlişkilendirme: .json dosyaları için varsayılan uygulama..."
 if command -v xdg-mime &> /dev/null; then
-    xdg-mime default jsoneditor.desktop application/json 2>/dev/null || true
-    DEFAULT_APP=$(xdg-mime query default application/json 2>/dev/null || echo "bilinmiyor")
-    echo "  Varsayılan: $DEFAULT_APP"
+    # xdg-mime hata verirse alternatives ile dene
+    if xdg-mime default jsoneditor.desktop application/json 2>/dev/null; then
+        DEFAULT_APP=$(xdg-mime query default application/json 2>/dev/null || echo "bilinmiyor")
+        echo "  Varsayılan: $DEFAULT_APP"
+    else
+        echo "  -> Uyarı: xdg-mime komutu hata verdi (qtpaths eksik olabilir)"
+        echo "  -> Alternatives ile denenecek..."
+        # alternatives komutunu dene
+        if command -v update-alternatives &> /dev/null; then
+            sudo update-alternatives --install /usr/bin/x-www-browser x-www-browser /home/engin/.local/bin/"JSON Editor_0.1.0_amd64.AppImage" 100 2>/dev/null || true
+        fi
+        echo "  -> Manuel olarak deneyin: xdg-mime default jsoneditor.desktop application/json"
+    fi
 else
     echo "  -> Uyarı: xdg-mime komutu bulunamadı"
 fi
@@ -157,6 +167,12 @@ echo "  - Dosya yöneticisinden .json dosyasına çift tıklayın"
 echo "  - Terminalden: xdg-open file.json"
 echo "  - Veya doğrudan: $APPIMAGE_PATH file.json"
 echo ""
+if ! command -v xdg-mime &> /dev/null || ! xdg-mime query default application/json 2>/dev/null | grep -q "jsoneditor"; then
+    echo "NOT: Varsayılan uygulama ayarlanmadıysa, manuel olarak çalıştırın:"
+    echo "  xdg-mime default jsoneditor.desktop application/json"
+    echo "  (qtpacks paketi eksik olabilir: sudo apt install qtpaths5)"
+    echo ""
+fi
 echo "Kaldırmak için:"
 echo "  rm $APPIMAGE_PATH"
 echo "  rm $DESKTOP_FILE"
