@@ -50,49 +50,20 @@ jobs:
             xdg-utils \
             file
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
 
-      - name: Build AppImage
-        run: |
-          chmod +x build-appimage.sh
-          ./build-appimage.sh appimage
-
-      - name: Build DEB
-        run: |
-          chmod +x build-appimage.sh
-          ./build-appimage.sh deb
-
-      - name: Build RPM
-        run: |
-          chmod +x build-appimage.sh
-          ./build-appimage.sh rpm
-
-      - name: Build standalone binary
-        run: |
-          chmod +x build-appimage.sh
-          ./build-appimage.sh app
-
-      - name: Get version from tag
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+      - name: Build application
+        run: npm run build:desktop
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: jsoneditor-linux
-          path: release-linux/
+          path: src-tauri/target/release/bundle/
           retention-days: 7
 
   build-macos:
@@ -119,28 +90,14 @@ jobs:
       - name: Install Xcode Command Line Tools
         run: xcode-select --install || true
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
 
       - name: Build application
-        run: |
-          chmod +x build-desktop.sh
-          ./build-desktop.sh
-
-      - name: Get version from tag
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+        run: npm run build:desktop
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -170,26 +127,14 @@ jobs:
         with:
           components: rust-src
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Install npm dependencies
-        run: npm ci
+        run: npm install
 
       - name: Install Tauri CLI
         run: npm install -g @tauri-apps/cli
 
       - name: Build application
         run: npm run build:desktop
-
-      - name: Get version from tag
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
@@ -209,36 +154,29 @@ jobs:
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
         with:
+          name: jsoneditor-linux
           path: release-linux
-          pattern: jsoneditor-linux
-          merge-multiple: true
 
       - name: Download macOS artifacts
         uses: actions/download-artifact@v4
         with:
+          name: jsoneditor-macos
           path: release-macos
-          pattern: jsoneditor-macos
-          merge-multiple: true
 
       - name: Download Windows artifacts
         uses: actions/download-artifact@v4
         with:
+          name: jsoneditor-windows
           path: release-windows
-          pattern: jsoneditor-windows
-          merge-multiple: true
-
-      - name: Get version from tag
-        id: version
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          name: Release ${{ steps.version.outputs.version }}
-          tag_name: ${{ github.ref }}
+          name: Release ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
           files: |
-            release-linux/*
-            release-macos/*
-            release-windows/*
+            release-linux/**
+            release-macos/**/*.dmg
+            release-windows/**/*.msi
           generate_release_notes: true
           fail_on_unmatched_files: false
