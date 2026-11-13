@@ -14,15 +14,8 @@ env:
 
 jobs:
   build:
-    name: ${{ matrix.target }}
+    name: Linux
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target:
-          - appimage
-          - deb
-          - rpm
-          - app
 
     steps:
       - name: Checkout repository
@@ -59,14 +52,6 @@ jobs:
             xdg-utils \
             file
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Install npm dependencies
         run: npm ci
 
@@ -74,18 +59,12 @@ jobs:
         run: npm install -g @tauri-apps/cli
 
       - name: Build application
-        run: |
-          chmod +x build-appimage.sh
-          ./build-appimage.sh ${{ matrix.target }}
+        run: npm run build:desktop -- --bundles deb
 
-      - name: Upload build artifacts
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jsoneditor-linux-${{ matrix.target }}
-          path: |
-            release-linux/*.AppImage
-            release-linux/*.deb
-            release-linux/*.rpm
-            release-linux/jsoneditor
+          name: jsoneditor-linux-deb
+          path: src-tauri/target/release/bundle/deb/*.deb
           retention-days: 7
           if-no-files-found: warn

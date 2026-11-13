@@ -34,14 +34,6 @@ jobs:
       - name: Install Xcode Command Line Tools
         run: xcode-select --install || true
 
-      - name: Cache npm dependencies
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
       - name: Install npm dependencies
         run: npm ci
 
@@ -49,34 +41,12 @@ jobs:
         run: npm install -g @tauri-apps/cli
 
       - name: Build application
-        run: |
-          chmod +x build-desktop.sh
-          ./build-desktop.sh
+        run: npm run build:desktop -- --target x86_64-apple-darwin
 
-      - name: Create DMG installer
-        run: |
-          cd src-tauri/target/release/bundle/dmg
-          ls -la
-          # The DMG is already created by Tauri, just need to verify it exists
-          if [ -f "*.dmg" ]; then
-            echo "DMG bundle created successfully"
-          else
-            # Try to find the actual .dmg file
-            find . -name "*.dmg" -type f
-          fi
-
-      - name: Upload macOS DMG
+      - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jsoneditor-macos-dmg
-          path: src-tauri/target/release/bundle/dmg/*.dmg
-          retention-days: 7
-          if-no-files-found: warn
-
-      - name: Upload macOS app
-        uses: actions/upload-artifact@v4
-        with:
-          name: jsoneditor-macos-app
-          path: src-tauri/target/release/bundle/macos/*.app
+          name: jsoneditor-macos
+          path: src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/*.dmg
           retention-days: 7
           if-no-files-found: warn
