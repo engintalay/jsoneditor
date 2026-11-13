@@ -13,8 +13,7 @@ dist-ssr
 *.local
 src-tauri/target
 src-tauri/gen/schemas
-# proxy arkasinda crates.io'dan cekilemeyen crate kaynagi (bkz. README)
-vendor/
+# release artifacts (git ile paylasilmaz)
 release-linux/
 .cargo/
 src-tauri/.cargo/
