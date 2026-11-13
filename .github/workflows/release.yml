@@ -1,0 +1,244 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_PROFILE: release
+
+jobs:
+  build-linux:
+    name: Linux Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rust-src
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libsoup-3.0-dev \
+            libgdk-pixbuf-2.0-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libdbus-1-dev \
+            libssl-dev \
+            libxdo-dev \
+            build-essential \
+            pkg-config \
+            patchelf \
+            desktop-file-utils \
+            xdg-utils \
+            file
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Build AppImage
+        run: |
+          chmod +x build-appimage.sh
+          ./build-appimage.sh appimage
+
+      - name: Build DEB
+        run: |
+          chmod +x build-appimage.sh
+          ./build-appimage.sh deb
+
+      - name: Build RPM
+        run: |
+          chmod +x build-appimage.sh
+          ./build-appimage.sh rpm
+
+      - name: Build standalone binary
+        run: |
+          chmod +x build-appimage.sh
+          ./build-appimage.sh app
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsoneditor-linux
+          path: release-linux/
+          retention-days: 7
+
+  build-macos:
+    name: macOS Build
+    runs-on: macos-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rust-src
+
+      - name: Install Xcode Command Line Tools
+        run: xcode-select --install || true
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Build application
+        run: |
+          chmod +x build-desktop.sh
+          ./build-desktop.sh
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsoneditor-macos
+          path: src-tauri/target/release/bundle/dmg/*.dmg
+          retention-days: 7
+
+  build-windows:
+    name: Windows Build
+    runs-on: windows-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rust-src
+
+      - name: Cache npm dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Install Tauri CLI
+        run: npm install -g @tauri-apps/cli
+
+      - name: Build application
+        run: npm run build:desktop
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: jsoneditor-windows
+          path: src-tauri/target/release/bundle/msi/*.msi
+          retention-days: 7
+
+  release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-linux, build-macos, build-windows]
+    permissions:
+      contents: write
+
+    steps:
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-linux
+          pattern: jsoneditor-linux
+          merge-multiple: true
+
+      - name: Download macOS artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-macos
+          pattern: jsoneditor-macos
+          merge-multiple: true
+
+      - name: Download Windows artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: release-windows
+          pattern: jsoneditor-windows
+          merge-multiple: true
+
+      - name: Get version from tag
+        id: version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Release ${{ steps.version.outputs.version }}
+          tag_name: ${{ github.ref }}
+          files: |
+            release-linux/*
+            release-macos/*
+            release-windows/*
+          generate_release_notes: true
+          fail_on_unmatched_files: false
