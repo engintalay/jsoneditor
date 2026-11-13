@@ -41,7 +41,7 @@ jobs:
         run: npm install -g @tauri-apps/cli
 
       - name: Build application
-        run: npm run build:desktop -- --target x86_64-apple-darwin
+        run: npm run build:desktop
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

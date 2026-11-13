@@ -59,12 +59,12 @@ jobs:
         run: npm install -g @tauri-apps/cli
 
       - name: Build application
-        run: npm run build:desktop -- --bundles deb
+        run: npm run build:desktop
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: jsoneditor-linux-deb
-          path: src-tauri/target/release/bundle/deb/*.deb
+          name: jsoneditor-linux
+          path: src-tauri/target/release/bundle/
           retention-days: 7
           if-no-files-found: warn
