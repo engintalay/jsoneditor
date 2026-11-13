@@ -15,6 +15,9 @@ src-tauri/target
 src-tauri/gen/schemas
 # proxy arkasinda crates.io'dan cekilemeyen crate kaynagi (bkz. README)
 vendor/
+release-linux/
+.cargo/
+src-tauri/.cargo/
 
 # Editor directories and files
 .vscode/*

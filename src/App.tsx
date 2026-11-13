@@ -18,7 +18,6 @@ import { useStore } from './store/useStore';
 
 export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
-  const store = useStore();
   useTheme();
   useWorkspaceRefresh();
   
@@ -29,6 +28,9 @@ export default function App() {
   
   // Tauri'den gelen open events dinleyicisi
   useEffect(() => {
+    let unlistenFn: (() => void) | undefined;
+    let cancelled = false;
+
     const checkTauriAndListen = async () => {
       // Tauri kontrolu
       const isTauri = typeof window !== 'undefined' && 
@@ -44,15 +46,15 @@ export default function App() {
         // Uygulama baslarken mevcut args'i kontrol et
         try {
           const args = await invoke<string[]>('get_args');
-          if (args && args.length > 0) {
+          if (!cancelled && args && args.length > 0) {
             // Dosya yollarini handle et
             const jsonFiles = args.filter(a => a.endsWith('.json') || a.endsWith('.jsonc'));
             if (jsonFiles.length > 0) {
               for (const file of jsonFiles) {
                 try {
                   const content = await invoke<string>('read_file', { path: file });
-                  const name = file.split('/').pop() || file;
-                  store.openFileTab(file, name, content);
+                  const name = file.split(/[/\\]/).pop() || file;
+                  useStore.getState().openFileTab(file, name, content);
                 } catch (e) {
                   console.error('Dosya acilamadi:', file, e);
                 }
@@ -71,8 +73,8 @@ export default function App() {
             files.forEach(file => {
               try {
                 invoke<string>('read_file', { path: file }).then(content => {
-                  const name = file.split('/').pop() || file;
-                  store.openFileTab(file, name, content);
+                  const name = file.split(/[/\\]/).pop() || file;
+                  useStore.getState().openFileTab(file, name, content);
                 }).catch(err => {
                   console.error('Dosya okunamadi:', file, err);
                 });
@@ -83,35 +85,46 @@ export default function App() {
           }
         });
         
-        return () => {
+        if (cancelled) {
           unlisten();
-        };
+        } else {
+          unlistenFn = unlisten;
+        }
       } catch (e) {
         console.error('Tauri open event setup error:', e);
       }
     };
     
-    checkTauriAndListen();
-  }, [store]);
+    void checkTauriAndListen();
+
+    return () => {
+      cancelled = true;
+      unlistenFn?.();
+    };
+  }, []);
   
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
       if (!mod) return;
       // Inputlara odakli iken kısayolları engelle.
-      // Monaco editörünün gizli girdi alani da <textarea>'dir; kaydetmenin
-      // editör içinde de çalismasi icin o alan muaf tutulur.
+      // Monaco editörünün girdi alanı (.monaco-editor içindeki textarea/editcontext)
+      // kaydetmenin editör içinde de çalışması için muaf tutulur.
       const el = e.target as HTMLElement | null;
-      if (el?.tagName === 'INPUT') return;
-      if (el?.tagName === 'TEXTAREA' && !el.classList.contains('inputarea')) return;
+      const inMonaco = !!el?.closest?.('.monaco-editor');
+      if (!inMonaco) {
+        if (el?.tagName === 'INPUT') return;
+        if (el?.tagName === 'TEXTAREA' && !el.classList.contains('inputarea')) return;
+      }
       const s = useStore.getState();
       const key = e.key.toLowerCase();
       if (key === 's') {
         e.preventDefault();
+        e.stopPropagation();
         const tab = s.activeTab();
         if (!tab) return;
-        writeFile(tab.path, tab.name, tab.content).then((res) => {
-          if (res) s.markSaved(tab.id, res.path, res.name);
+        void writeFile(tab.path, tab.name, tab.content).then((res) => {
+          if (res) useStore.getState().markSaved(tab.id, res.path, res.name);
         });
       } else if (key === 'n') {
         e.preventDefault();
@@ -122,8 +135,8 @@ export default function App() {
         if (tab && confirmCloseTab(tab)) s.closeTab(tab.id);
       }
     };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('keydown', onKey, true);
+    return () => window.removeEventListener('keydown', onKey, true);
   }, []);
 
   return (

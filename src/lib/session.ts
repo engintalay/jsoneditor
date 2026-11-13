@@ -18,10 +18,9 @@ interface Session {
 
 export function computeSignature(data: string): Promise<string> {
   const encoder = new TextEncoder();
-  const dataBytes = encoder.encode(data);
-  const secretBytes = encoder.encode(SECRET);
-  if (typeof crypto !== 'undefined' && (crypto as any).subtle) {
-    return (crypto as any).subtle.digest('SHA-256', secretBytes, dataBytes).then(
+  const payload = encoder.encode(`${SECRET}:${data}`);
+  if (typeof crypto !== 'undefined' && crypto.subtle) {
+    return crypto.subtle.digest('SHA-256', payload).then(
       (hash: ArrayBuffer) => {
         const hashArray = Array.from(new Uint8Array(hash));
         return hashArray
@@ -83,7 +82,8 @@ export async function restoreSession(): Promise<void> {
     return;
   }
 
-  const valid = await verifySignature(JSON.stringify(s), s.signature);
+  const unsigned: Session = { ...s, signature: '' };
+  const valid = await verifySignature(JSON.stringify(unsigned), s.signature);
   if (!valid) {
     /* Signature gecersiz, eski oturumu sil */
     localStorage.removeItem(KEY);

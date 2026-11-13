@@ -1,5 +1,6 @@
 import Editor, { type OnMount } from '@monaco-editor/react';
 import { useEffect, useRef } from 'react';
+import { writeFile } from '../lib/fs';
 import { parseErrors } from '../lib/jsonUtils';
 import { useStore } from '../store/useStore';
 import type { editor } from 'monaco-editor';
@@ -61,6 +62,14 @@ export default function EditorPane() {
   const onMount: OnMount = (editor, monaco) => {
     editorRef.current = editor;
     monacoRef.current = monaco;
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => {
+      const s = useStore.getState();
+      const current = s.activeTab();
+      if (!current) return;
+      void writeFile(current.path, current.name, current.content).then((res) => {
+        if (res) useStore.getState().markSaved(current.id, res.path, res.name);
+      });
+    });
   };
 
   return (

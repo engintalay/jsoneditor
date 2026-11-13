@@ -1,3 +1,4 @@
+import { invoke } from '@tauri-apps/api/core';
 import { open, save } from '@tauri-apps/plugin-dialog';
 import { readDir, readTextFile, writeTextFile } from '@tauri-apps/plugin-fs';
 import type { FileNode } from '../types';
@@ -214,17 +215,23 @@ export async function pickAndReadFile(): Promise<{
     }
   }
   if (isTauri) {
-    const file = await open({
-      multiple: false,
-      filters: [{ name: 'JSON', extensions: ['json', 'jsonc', 'txt'] }],
-    });
-    if (typeof file !== 'string' || !file) return null;
-    const content = await readTextFile(file);
-    const name = file.split('/').pop() ?? file;
-    if (!isValidJsonContent(content) && /\.jsonc?$/i.test(name)) {
-      alert('Uyarı: Seçilen dosya geçerli JSON içeriyor değil.');
+    try {
+      const file = await open({
+        multiple: false,
+        filters: [{ name: 'JSON', extensions: ['json', 'jsonc', 'txt'] }],
+      });
+      if (typeof file !== 'string' || !file) return null;
+      const content = await readFileByPath(file);
+      const name = file.split(/[/\\]/).pop() ?? file;
+      if (!isValidJsonContent(content) && /\.jsonc?$/i.test(name)) {
+        alert('Uyarı: Seçilen dosya geçerli JSON içeriyor değil.');
+      }
+      return { path: file, name, content };
+    } catch (err) {
+      console.error('Dosya açma hatası:', err);
+      alert('Dosya açılamadı: ' + (err instanceof Error ? err.message : String(err)));
+      return null;
     }
-    return { path: file, name, content };
   }
   // tarayıcı fallback
   return new Promise((resolve) => {
@@ -248,49 +255,80 @@ export async function pickAndReadFile(): Promise<{
   });
 }
 
+let isWriting = false;
+
 export async function writeFile(
   currentPath: string | undefined,
   suggestedName: string,
   content: string,
 ): Promise<{ path: string; name: string } | null> {
-  if (isServerMode()) {
-    const targetPath = currentPath ?? `/${suggestedName}`;
-    if (!validatePathWithinRoot(targetPath, '/')) {
-      alert('Uyarı: Yazılacak yol güvenli değildir, engellendi.');
-      return null;
-    }
-    await srv('/fs/write', targetPath, { method: 'POST', body: content });
-    return { path: targetPath, name: targetPath.split('/').pop() ?? suggestedName };
-  }
-  if (isTauri) {
-    let target = currentPath;
-    if (!target) {
-      const picked = await save({
-        defaultPath: suggestedName,
-        filters: [{ name: 'JSON', extensions: ['json'] }],
-      });
-      if (!picked) return null;
-      target = picked;
-      if (!validatePathWithinRoot(target, '')) {
-        alert('Uyarı: Seçilen yol güvenli değildir, kaydedilmedi.');
+  if (isWriting) return null;
+  isWriting = true;
+  try {
+    if (isServerMode()) {
+      const targetPath = currentPath ?? `/${suggestedName}`;
+      if (!validatePathWithinRoot(targetPath, '/')) {
+        alert('Uyarı: Yazılacak yol güvenli değildir, engellendi.');
+        return null;
+      }
+      try {
+        await srv('/fs/write', targetPath, { method: 'POST', body: content });
+        return { path: targetPath, name: targetPath.split('/').pop() ?? suggestedName };
+      } catch (err) {
+        console.error('Sunucuya kaydetme hatası:', err);
+        alert('Dosya sunucuya kaydedilemedi: ' + (err instanceof Error ? err.message : String(err)));
         return null;
       }
     }
-    await writeTextFile(target, content);
-    const name = target.split('/').pop() ?? target;
-    return { path: target, name };
+    if (isTauri) {
+      try {
+        let target = currentPath;
+        if (!target) {
+          const defaultName = /\.[a-z0-9]+$/i.test(suggestedName)
+            ? suggestedName
+            : `${suggestedName}.json`;
+          const picked = await save({
+            defaultPath: defaultName,
+            filters: [{ name: 'JSON', extensions: ['json', 'jsonc', 'txt'] }],
+          });
+          if (!picked) return null;
+          target = typeof picked === 'string' ? picked : String(picked);
+          if (!validatePathWithinRoot(target, '')) {
+            alert('Uyarı: Seçilen yol güvenli değildir, kaydedilmedi.');
+            return null;
+          }
+        }
+        try {
+          await invoke('write_file', { path: target, content });
+        } catch {
+          await writeTextFile(target, content);
+        }
+        const name = target.split(/[/\\]/).pop() ?? target;
+        return { path: target, name };
+      } catch (err) {
+        console.error('Dosya kaydetme hatası:', err);
+        alert('Dosya kaydedilemedi: ' + (err instanceof Error ? err.message : String(err)));
+        return null;
+      }
+    }
+    const blob = new Blob([content], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = suggestedName;
+    a.click();
+    URL.revokeObjectURL(a.href);
+    return { path: suggestedName, name: suggestedName };
+  } finally {
+    isWriting = false;
   }
-  const blob = new Blob([content], { type: 'application/json' });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = suggestedName;
-  a.click();
-  URL.revokeObjectURL(a.href);
-  return { path: suggestedName, name: suggestedName };
 }
 
 export async function readFileByPath(path: string): Promise<string> {
   if (isServerMode()) return (await srv('/fs/read', path)).text();
   if (!isTauri) throw new Error('Tauri dışında yoldan okuma desteklenmiyor');
-  return readTextFile(path);
+  try {
+    return await invoke<string>('read_file', { path });
+  } catch {
+    return await readTextFile(path);
+  }
 }

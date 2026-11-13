@@ -1,7 +1,6 @@
 mod fs_server;
 
-use serde::Deserialize;
-use tauri::{Emitter, AppHandle};
+use tauri::{AppHandle, Emitter};
 
 #[tauri::command]
 fn read_file(path: String) -> Result<String, String> {
@@ -9,16 +8,34 @@ fn read_file(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+fn write_file(path: String, content: String) -> Result<(), String> {
+    if let Some(parent) = std::path::Path::new(&path).parent() {
+        if !parent.as_os_str().is_empty() && !parent.exists() {
+            std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+        }
+    }
+    std::fs::write(&path, content).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 fn open_files(app: AppHandle, files: Vec<String>) {
     // Event'i frontend'e gönder
-    if let Err(e) = app.emit_all("open-files", files) {
+    if let Err(e) = app.emit("open-files", files) {
         eprintln!("Failed to emit open-files event: {}", e);
     }
 }
 
 #[tauri::command]
 fn get_args() -> Vec<String> {
-    std::env::args().collect()
+    std::env::args()
+        .skip(1)
+        .filter(|a| !a.starts_with('-'))
+        .map(|a| {
+            std::fs::canonicalize(&a)
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or(a)
+        })
+        .collect()
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -50,7 +67,12 @@ pub fn run() {
             // Tauri v2'de cli plugin kullanilabilir
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![read_file, open_files, get_args])
+        .invoke_handler(tauri::generate_handler![
+            read_file,
+            write_file,
+            open_files,
+            get_args
+        ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");
 }

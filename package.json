@@ -1,7 +1,7 @@
 {
   "name": "jsoneditor",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -34,9 +34,12 @@
     "@vitejs/plugin-react": "^6.1.1",
     "oxlint": "^1.81.0",
     "typescript": "~6.0.2",
-    "vite": "^8.3.0",
-    "resolutions": {
-      "monaco-editor/dompurify": "3.4.17"
-    }
+    "vite": "^8.3.0"
+  },
+  "overrides": {
+    "dompurify": "3.4.17"
+  },
+  "resolutions": {
+    "monaco-editor/dompurify": "3.4.17"
   }
 }
