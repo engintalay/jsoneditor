@@ -4,6 +4,7 @@ import {
   getServerUrl,
   isServerMode,
   isTauri,
+  openFolderAt,
   openServerFolder,
   pickAndReadFile,
   pickFolder,
@@ -68,7 +69,16 @@ export default function MenuBar() {
 
   const onOpenFile = async () => {
     const f = await pickAndReadFile();
-    if (f) store.openFileTab(f.path, f.name, f.content);
+    if (!f) return;
+    store.openFileTab(f.path, f.name, f.content);
+    // acilan dosyanin klasorunu workspace yap (yalnizca henuz workspace yoksa)
+    if (!store.workspaceRoot) {
+      const dir = f.path.replace(/[/\\][^/\\]*$/, '');
+      if (dir) {
+        const r = await openFolderAt(dir);
+        if (r) store.setWorkspace(r.root, r.tree);
+      }
+    }
   };
 
   const onOpenFolder = async () => {

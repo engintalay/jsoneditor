@@ -10,9 +10,10 @@ import Sidebar from './components/Sidebar';
 import StatusBar from './components/StatusBar';
 import TabBar from './components/TabBar';
 import { confirmCloseTab } from './lib/confirm';
-import { writeFile } from './lib/fs';
+import { openFolderAt, writeFile } from './lib/fs';
 import { restoreSession, startSessionPersistence } from './lib/session';
 import { useTheme } from './lib/useTheme';
+import { useExternalChangeDetection } from './lib/useExternalChangeDetection';
 import { useWorkspaceRefresh } from './lib/useWorkspaceRefresh';
 import { useStore } from './store/useStore';
 
@@ -20,12 +21,13 @@ export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
   useTheme();
   useWorkspaceRefresh();
-  
+  const externalChangeModal = useExternalChangeDetection();
+
   useEffect(() => {
     startSessionPersistence();
     void restoreSession();
   }, []);
-  
+
   // Tauri'den gelen open events dinleyicisi
   useEffect(() => {
     let unlistenFn: (() => void) | undefined;
@@ -33,16 +35,16 @@ export default function App() {
 
     const checkTauriAndListen = async () => {
       // Tauri kontrolu
-      const isTauri = typeof window !== 'undefined' && 
+      const isTauri = typeof window !== 'undefined' &&
         ('__TAURI_INTERNALS__' in window || '__TAURI__' in window);
-      
+
       if (!isTauri) return;
-      
+
       try {
         // Tauri IPC ile open event dinle
         const { invoke } = await import('@tauri-apps/api/core');
         const { listen } = await import('@tauri-apps/api/event');
-        
+
         // Uygulama baslarken mevcut args'i kontrol et
         try {
           const args = await invoke<string[]>('get_args');
@@ -55,6 +57,15 @@ export default function App() {
                   const content = await invoke<string>('read_file', { path: file });
                   const name = file.split(/[/\\]/).pop() || file;
                   useStore.getState().openFileTab(file, name, content);
+                  // acilan dosyanin klasorunu workspace yap (yalnizca henuz workspace yoksa)
+                  const st = useStore.getState();
+                  if (!st.workspaceRoot) {
+                    const dir = file.replace(/[/\\][^/\\]*$/, '');
+                    if (dir) {
+                      const r = await openFolderAt(dir);
+                      if (r) st.setWorkspace(r.root, r.tree);
+                    }
+                  }
                 } catch (e) {
                   console.error('Dosya acilamadi:', file, e);
                 }
@@ -65,7 +76,7 @@ export default function App() {
           // Args yoksa veya basarili olmazsa devam et
           console.log('Args okunamadi veya args yok:', e);
         }
-        
+
         // Tauri'den gelen open event'leri dinle
         const unlisten = await listen('open-files', (event: any) => {
           const files = event.payload as string[];
@@ -75,6 +86,15 @@ export default function App() {
                 invoke<string>('read_file', { path: file }).then(content => {
                   const name = file.split(/[/\\]/).pop() || file;
                   useStore.getState().openFileTab(file, name, content);
+                  const st = useStore.getState();
+                  if (!st.workspaceRoot) {
+                    const dir = file.replace(/[/\\][^/\\]*$/, '');
+                    if (dir) {
+                      void openFolderAt(dir).then((r) => {
+                        if (r) useStore.getState().setWorkspace(r.root, r.tree);
+                      });
+                    }
+                  }
                 }).catch(err => {
                   console.error('Dosya okunamadi:', file, err);
                 });
@@ -84,7 +104,7 @@ export default function App() {
             });
           }
         });
-        
+
         if (cancelled) {
           unlisten();
         } else {
@@ -94,7 +114,7 @@ export default function App() {
         console.error('Tauri open event setup error:', e);
       }
     };
-    
+
     void checkTauriAndListen();
 
     return () => {
@@ -102,7 +122,7 @@ export default function App() {
       unlistenFn?.();
     };
   }, []);
-  
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.ctrlKey || e.metaKey;
@@ -164,6 +184,7 @@ export default function App() {
       </div>
       <StatusBar />
       <QuickOpen />
+      {externalChangeModal}
     </div>
   );
 }

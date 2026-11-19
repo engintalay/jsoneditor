@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { clearExternalChangePolicy } from '../lib/externalChange';
 import type { FileNode, JsonError, Tab, ThemeMode } from '../types';
 
 let seq = 0;
@@ -33,6 +34,7 @@ interface State {
   setActive: (id: string) => void;
   updateContent: (id: string, content: string) => void;
   markSaved: (id: string, path: string, name: string) => void;
+  reloadExternal: (id: string, content: string) => void;
   setWorkspace: (root: string | null, tree: FileNode[]) => void;
   setErrors: (errors: JsonError[]) => void;
   setSchemaErrors: (errors: JsonError[]) => void;
@@ -91,10 +93,18 @@ export const useStore = create<State>((set, get) => ({
         t.id === id ? { ...t, content, dirty: true } : t,
       ),
     })),
-  markSaved: (id, path, name) =>
+  markSaved: (id, path, name) => {
+    clearExternalChangePolicy();
     set((s) => ({
       tabs: s.tabs.map((t) =>
         t.id === id ? { ...t, path, name, dirty: false } : t,
+      ),
+    }));
+  },
+  reloadExternal: (id, content) =>
+    set((s) => ({
+      tabs: s.tabs.map((t) =>
+        t.id === id ? { ...t, content, dirty: false } : t,
       ),
     })),
   setWorkspace: (root, tree) =>
