@@ -7,6 +7,75 @@ const TABLE_ROW_LIMIT = 200;
 
 type Segments = (string | number)[];
 
+/** JSON path'ten satır numarasını bulur (1-tabanlı) */
+function findLineNumber(content: string, segments: Segments): number {
+  const lines = content.split('\n');
+  
+  // Rekürsif tarayıcı
+  function findInObject(obj: unknown, path: Segments, lineIdx: number): number | null {
+    if (typeof obj !== 'object' || obj === null) {
+      return null;
+    }
+    
+    let currentLine = lineIdx;
+    
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        const item = obj[i];
+        // Array elemanı satırı bul
+        for (let j = currentLine; j < lines.length; j++) {
+          const line = lines[j];
+          // Array index pattern'ini ara: ]\s*$ veya ,\s*]\s*$
+          if (new RegExp(`\\[${i}\\]\\s*$`).test(line.trim()) || 
+              (i > 0 && new RegExp(`,\\s*\\[${i}\\]\\s*$`).test(line.trim()))) {
+            const subPath = [...path, i];
+            if (JSON.stringify(subPath) === JSON.stringify(segments)) {
+              return j + 1; // 1-tabanlı
+            }
+            // Eğer alt nodelar varsa, onları da ara
+            if (item !== null && typeof item === 'object') {
+              const found = findInObject(item, subPath, j + 1);
+              if (found) return found;
+            }
+            currentLine = j + 1;
+            break;
+          }
+        }
+      }
+    } else {
+      const entries = Object.entries(obj as Record<string, unknown>);
+      for (const [key, val] of entries) {
+        for (let j = currentLine; j < lines.length; j++) {
+          const line = lines[j];
+          // Object key pattern'ini ara
+          const keyPattern = JSON.stringify(key);
+          if (new RegExp(`${keyPattern}\\s*:`).test(line.trim())) {
+            const subPath = [...path, key];
+            if (JSON.stringify(subPath) === JSON.stringify(segments)) {
+              return j + 1; // 1-tabanlı
+            }
+            // Eğer alt nodelar varsa, onları da ara
+            if (val !== null && typeof val === 'object') {
+              const found = findInObject(val, subPath, j + 1);
+              if (found) return found;
+            }
+            currentLine = j + 1;
+            break;
+          }
+        }
+      }
+    }
+    return null;
+  }
+  
+  try {
+    const root = JSON.parse(content);
+    return findInObject(root, [], 0) ?? 1;
+  } catch {
+    return 1;
+  }
+}
+
 function Value({ v }: { v: unknown }) {
   if (v === null) return <span className="null">null</span>;
   if (typeof v === 'string')
@@ -101,6 +170,7 @@ function Node({
   onCopy,
   onEdit,
   onDelete,
+  onLineClick,
 }: {
   k: string;
   v: unknown;
@@ -110,6 +180,7 @@ function Node({
   onCopy: (path: string) => void;
   onEdit: (segments: Segments, raw: string) => void;
   onDelete: (segments: Segments) => void;
+  onLineClick?: (segments: Segments) => void;
 }) {
   const [open, setOpen] = useState(depth < 2);
   const [editing, setEditing] = useState(false);
@@ -127,7 +198,7 @@ function Node({
   if (!isObj) {
     return (
       <div className="tree-node">
-        <div className="line" title={path}>
+        <div className="line" title={path} onClick={() => onLineClick?.(segments)}>
           <span className="key">{k}:</span>{' '}
           {editing ? (
             <input
@@ -190,7 +261,7 @@ function Node({
   }
   return (
     <div className="tree-node">
-      <div className="line" onClick={() => setOpen(!open)} title={path}>
+      <div className="line" onClick={() => { setOpen(!open); onLineClick?.(segments); }} title={path}>
         <span>{open ? '▾' : '▸'}</span>
         <span className="key">{k}</span>
         <span style={{ color: 'var(--text-dim)' }}>{label}</span>
@@ -229,6 +300,7 @@ function Node({
               onCopy={onCopy}
               onEdit={onEdit}
               onDelete={onDelete}
+              onLineClick={onLineClick}
             />
           </div>
         ))}
@@ -248,11 +320,13 @@ function TableView({
   base,
   onCopy,
   copied,
+  onLineClick,
 }: {
   rows: Record<string, unknown>[];
   base: Segments;
   onCopy: (p: string) => void;
   copied: string | null;
+  onLineClick?: (segments: Segments) => void;
 }) {
   const cols = useMemo(() => {
     const set = new Set<string>();
@@ -284,7 +358,14 @@ function TableView({
                   <td
                     key={c}
                     title={p}
-                    onClick={() => copyText(cellText(r[c])).then((ok) => ok && onCopy(p))}
+                    onClick={(e) => {
+                      if (onLineClick) {
+                        e.stopPropagation();
+                        onLineClick([...base, i]);
+                      } else {
+                        copyText(cellText(r[c])).then((ok) => ok && onCopy(p));
+                      }
+                    }}
                     style={{ cursor: 'copy' }}
                   >
                     {copied === p ? '✓ ' : ''}
@@ -318,10 +399,17 @@ function findTable(value: unknown): { rows: Record<string, unknown>[]; base: Seg
 }
 
 export default function TreePanel() {
-  const { activeTab, updateContent } = useStore();
+  const { activeTab, updateContent, setActiveLineNumber } = useStore();
   const tab = activeTab();
   const [copied, setCopied] = useState<string | null>(null);
   const [view, setView] = useState<'tree' | 'table'>('tree');
+
+  const handleLineClick = (segments: Segments) => {
+    if (tab) {
+      const lineNum = findLineNumber(tab.content, segments);
+      setActiveLineNumber(lineNum);
+    }
+  };
   const data = useMemo(() => {
     if (!tab) return { ok: false as const };
     try {
@@ -403,7 +491,7 @@ export default function TreePanel() {
         </div>
       )}
       {tab && data.ok && !tooBig && view === 'table' && table && (
-        <TableView rows={table.rows} base={table.base} onCopy={flagCopied} copied={copied} />
+        <TableView rows={table.rows} base={table.base} onCopy={flagCopied} copied={copied} onLineClick={handleLineClick} />
       )}
       {tab && data.ok && !tooBig && view === 'tree' && (
         <div className="tree-view">
@@ -419,6 +507,7 @@ export default function TreePanel() {
                 onCopy={flagCopied}
                 onEdit={commitEdit}
                 onDelete={commitDelete}
+                onLineClick={handleLineClick}
               />
             ))
           ) : (

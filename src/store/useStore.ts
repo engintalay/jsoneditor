@@ -24,6 +24,7 @@ interface State {
   schemaErrors: JsonError[];
   rightPanel: 'tree' | 'schema' | null;
   jump: { line: number; column: number; nonce: number } | null;
+  activeLineNumber: number | null;
   schemaText: string;
   theme: ThemeMode;
   resolvedTheme: 'dark' | 'light';
@@ -40,6 +41,7 @@ interface State {
   setSchemaErrors: (errors: JsonError[]) => void;
   setRightPanel: (p: State['rightPanel']) => void;
   jumpTo: (line: number, column: number) => void;
+  setActiveLineNumber: (line: number | null) => void;
   setSchemaText: (t: string) => void;
   setTheme: (t: ThemeMode) => void;
   activeTab: () => Tab | undefined;
@@ -54,6 +56,7 @@ export const useStore = create<State>((set, get) => ({
   schemaErrors: [],
   rightPanel: 'tree',
   jump: null,
+  activeLineNumber: null,
   schemaText: '',
   theme: readTheme(),
   resolvedTheme: 'dark',
@@ -113,6 +116,7 @@ export const useStore = create<State>((set, get) => ({
   setSchemaErrors: (errors) => set({ schemaErrors: errors }),
   setRightPanel: (p) => set({ rightPanel: p }),
   jumpTo: (line, column) => set({ jump: { line, column, nonce: Date.now() } }),
+  setActiveLineNumber: (line) => set({ activeLineNumber: line }),
   setSchemaText: (t) => set({ schemaText: t }),
   setTheme: (t) => set({ theme: t }),
   activeTab: () => {
