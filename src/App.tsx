@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import EditorPane from './components/EditorPane';
 import ErrorPanel from './components/ErrorPanel';
 import QuickOpen from './components/QuickOpen';
@@ -16,9 +16,11 @@ import { useTheme } from './lib/useTheme';
 import { useExternalChangeDetection } from './lib/useExternalChangeDetection';
 import { useWorkspaceRefresh } from './lib/useWorkspaceRefresh';
 import { useStore } from './store/useStore';
+import { APP_VERSION, APP_NAME } from './lib/version';
 
 export default function App() {
   const rightPanel = useStore((s) => s.rightPanel);
+  const [showVersionNotice, setShowVersionNotice] = useState(false);
   useTheme();
   useWorkspaceRefresh();
   const externalChangeModal = useExternalChangeDetection();
@@ -26,6 +28,12 @@ export default function App() {
   useEffect(() => {
     startSessionPersistence();
     void restoreSession();
+    // Versiyon bildirimini göster (sadece ilk açılışta)
+    const shown = localStorage.getItem('jsoneditor-version-shown');
+    if (shown !== APP_VERSION) {
+      setShowVersionNotice(true);
+      localStorage.setItem('jsoneditor-version-shown', APP_VERSION);
+    }
   }, []);
 
   // Tauri'den gelen open events dinleyicisi
@@ -185,6 +193,65 @@ export default function App() {
       <StatusBar />
       <QuickOpen />
       {externalChangeModal}
+
+      {/* Versiyon Bildirimi */}
+      {showVersionNotice && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowVersionNotice(false)}
+        >
+          <div
+            className="modal"
+            style={{
+              background: 'var(--bg)',
+              padding: '24px',
+              borderRadius: 8,
+              width: '300px',
+              maxWidth: '90vw',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>{APP_NAME}</h3>
+            <p style={{ marginBottom: '16px', color: 'var(--text-dim)' }}>
+              Versiyon {APP_VERSION} yüklendi!
+            </p>
+            <p style={{ marginBottom: '16px', color: 'var(--text-dim)' }}>
+              Ağaç görünümünde node'lara tıklayarak doğrudan satıra geçebilirsiniz.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowVersionNotice(false)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '4px 12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 4,
+                  background: 'var(--btn-bg)',
+                  color: 'var(--text)',
+                  fontSize: '14px',
+                }}
+              >
+                Tamam
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

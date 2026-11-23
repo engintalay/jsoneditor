@@ -13,6 +13,7 @@ import {
   writeFile,
 } from '../lib/fs';
 import { useStore } from '../store/useStore';
+import { APP_VERSION, APP_NAME } from '../lib/version';
 
 export default function MenuBar() {
   const store = useStore();
@@ -20,6 +21,7 @@ export default function MenuBar() {
   const serverMode = isServerMode();
   const [connectUrl, setConnectUrl] = useState<string>('');
   const [showConnectModal, setShowConnectModal] = useState(false);
+  const [showAboutModal, setShowAboutModal] = useState(false);
 
   const needValid = (): string | null => {
     if (!tab) return null;
@@ -243,6 +245,12 @@ export default function MenuBar() {
           </>
         )}
         <button
+          onClick={() => setShowAboutModal(true)}
+          title="Hakkında - Versiyon bilgisi"
+        >
+          Hakkında
+        </button>
+        <button
           onClick={() =>
             store.setRightPanel(store.rightPanel === 'tree' ? null : 'tree')
           }
@@ -257,7 +265,66 @@ export default function MenuBar() {
           Schema
         </button>
       </div>
-      <span className="title">JSON Editor</span>
+      <span className="title">{APP_NAME}</span>
+
+      {/* Hakkında Modalı */}
+      {showAboutModal && (
+        <div
+          className="modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            background: 'rgba(0,0,0,0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 1000,
+          }}
+          onClick={() => setShowAboutModal(false)}
+        >
+          <div
+            className="modal"
+            style={{
+              background: 'var(--bg)',
+              padding: '24px',
+              borderRadius: 8,
+              width: '300px',
+              maxWidth: '90vw',
+              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+            }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3>{APP_NAME}</h3>
+            <p style={{ marginBottom: '16px', color: 'var(--text-dim)' }}>
+              Versiyon {APP_VERSION}
+            </p>
+            <p style={{ marginBottom: '16px', color: 'var(--text-dim)' }}>
+              JSON Editor - Basit ve güçlü JSON editörü
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setShowAboutModal(false)}
+                style={{
+                  cursor: 'pointer',
+                  padding: '4px 12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 4,
+                  background: 'var(--btn-bg)',
+                  color: 'var(--text)',
+                  fontSize: '14px',
+                }}
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
